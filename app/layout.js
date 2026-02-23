@@ -3,6 +3,7 @@ import { AuthProvider } from '@/lib/AuthContext';
 import Navbar from '@/components/Navbar';
 import ChatBot from '@/components/ChatBot';
 import ParticleBackground from '@/components/ParticleBackground';
+import Footer from '@/components/Footer';
 
 export const metadata = {
   title: 'VibeBuild — AI Driven Solutions & Vibe Coding',
@@ -25,6 +26,7 @@ export default function RootLayout({ children }) {
           <main style={{ position: 'relative', zIndex: 1 }}>
             {children}
           </main>
+          <Footer />
           <ChatBot />
         </AuthProvider>
       </body>
