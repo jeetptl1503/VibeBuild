@@ -3,6 +3,7 @@ import { AuthProvider } from '@/lib/AuthContext';
 import Navbar from '@/components/Navbar';
 import ChatBot from '@/components/ChatBot';
 import ParticleBackground from '@/components/ParticleBackground';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
   title: 'VibeBuild — AI Driven Solutions & Vibe Coding',
@@ -27,6 +28,7 @@ export default function RootLayout({ children }) {
           </main>
           <ChatBot />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
