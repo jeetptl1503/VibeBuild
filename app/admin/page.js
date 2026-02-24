@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard, ScrollReveal } from '@/components/UIComponents';
-import { Shield, Users, Settings, Clock, Plus, Edit3, Trash2, Save, X, ToggleLeft, Image, BarChart3, UserCheck } from 'lucide-react';
+import { Shield, Users, Settings, Clock, Plus, Edit3, Trash2, Save, X, Image, BarChart3, UserCheck, Award, Home, Rocket } from 'lucide-react';
 
 export default function AdminPage() {
     const { user, loading, authFetch } = useAuth();
@@ -66,18 +66,19 @@ export default function AdminPage() {
     return (
         <div className="page-container">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <h1 className="section-title">🛠️ Admin Panel</h1>
-                <p className="section-subtitle">Manage teams, settings, and workshop controls</p>
+                <h1 className="section-title">🚀 Command Center</h1>
+                <p className="section-subtitle">Manage workshops, teams, and configurations</p>
             </motion.div>
 
             {/* Quick Links */}
             <ScrollReveal>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                     {[
                         { icon: <UserCheck size={24} />, label: 'Attendance', href: '/admin/attendance', color: '#6366f1' },
                         { icon: <BarChart3 size={24} />, label: 'Reports', href: '/admin/reports', color: '#8b5cf6' },
                         { icon: <Image size={24} />, label: 'Gallery', href: '/gallery', color: '#ec4899' },
-                        { icon: <Users size={24} />, label: 'Showcase', href: '/showcase', color: '#06b6d4' },
+                        { icon: <Rocket size={24} />, label: 'Showcase', href: '/showcase', color: '#06b6d4' },
+                        { icon: <Award size={24} />, label: 'Certificates', href: '/certificates', color: '#f59e0b' },
                     ].map((item, i) => (
                         <GlassCard key={i} style={{ cursor: 'pointer', textAlign: 'center', padding: '1.5rem' }} onClick={() => router.push(item.href)}>
                             <div style={{ color: item.color, marginBottom: 8 }}>{item.icon}</div>

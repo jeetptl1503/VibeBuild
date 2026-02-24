@@ -1,161 +1,215 @@
 'use client';
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { GlassCard, ScrollReveal } from '@/components/UIComponents';
-import { Award, Download, QrCode, User, Users } from 'lucide-react';
+import { Award, Plus, Trash2, Search, Download, User, Hash, FileText, CheckCircle2, X } from 'lucide-react';
 
 export default function CertificatesPage() {
-    const { user } = useAuth();
-    const [certType, setCertType] = useState('participation');
-    const canvasRef = useRef(null);
+    const { user, loading, authFetch } = useAuth();
+    const [certificates, setCertificates] = useState([]);
+    const [fetching, setFetching] = useState(true);
+    const [showAdd, setShowAdd] = useState(false);
+    const [toast, setToast] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [form, setForm] = useState({
+        studentName: '', studentId: '', certificateUrl: '', certificateType: 'participation',
+    });
 
-    const generateCertificate = async (type) => {
-        const { jsPDF } = await import('jspdf');
-        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const isAdmin = user?.role === 'admin';
 
-        // Background
-        doc.setFillColor(248, 249, 255);
-        doc.rect(0, 0, 297, 210, 'F');
+    useEffect(() => {
+        if (user) fetchCertificates();
+    }, [user]);
 
-        // Border
-        doc.setDrawColor(99, 102, 241);
-        doc.setLineWidth(2);
-        doc.roundedRect(10, 10, 277, 190, 5, 5, 'S');
-        doc.setDrawColor(139, 92, 246);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(15, 15, 267, 180, 3, 3, 'S');
+    async function fetchCertificates() {
+        setFetching(true);
+        try {
+            const res = await authFetch('/api/certificates');
+            if (res.ok) {
+                const data = await res.json();
+                setCertificates(data.certificates || []);
+            }
+        } finally {
+            setFetching(false);
+        }
+    }
 
-        // Header
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.setTextColor(99, 102, 241);
-        doc.text('⚡ VIBEBUILD', 148.5, 35, { align: 'center' });
+    async function handleAdd(e) {
+        e.preventDefault();
+        if (!form.studentName || !form.studentId) return;
+        setSubmitting(true);
+        try {
+            const res = await authFetch('/api/certificates', { method: 'POST', body: JSON.stringify(form) });
+            if (res.ok) {
+                const data = await res.json();
+                setCertificates(prev => [data.certificate, ...prev]);
+                setForm({ studentName: '', studentId: '', certificateUrl: '', certificateType: 'participation' });
+                setShowAdd(false);
+                setToast('Certificate added!');
+                setTimeout(() => setToast(''), 3000);
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    }
 
-        doc.setFontSize(28);
-        doc.setTextColor(30, 30, 60);
-        doc.text(type === 'participation' ? 'Certificate of Participation' : 'Certificate of Completion', 148.5, 52, { align: 'center' });
+    async function handleDelete(id) {
+        if (!confirm('Delete this certificate?')) return;
+        const res = await authFetch(`/api/certificates/${id}`, { method: 'DELETE' });
+        if (res.ok) setCertificates(prev => prev.filter(c => c._id !== id));
+    }
 
-        // Decorative line
-        doc.setDrawColor(99, 102, 241);
-        doc.setLineWidth(1);
-        doc.line(80, 58, 217, 58);
-
-        // Body
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 100);
-        doc.text('This is to certify that', 148.5, 75, { align: 'center' });
-
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(99, 102, 241);
-        doc.text(user?.name || 'Team Name', 148.5, 90, { align: 'center' });
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 100);
-        doc.text(`has successfully ${type === 'participation' ? 'participated in' : 'completed'} the`, 148.5, 105, { align: 'center' });
-
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 30, 60);
-        doc.text('AI Driven Solutions & Vibe Coding Workshop', 148.5, 118, { align: 'center' });
-
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 100);
-        doc.text(`Domain: ${user?.domain || 'AI/ML'}`, 148.5, 132, { align: 'center' });
-        doc.text(`Team ID: ${user?.teamId || 'N/A'}`, 148.5, 140, { align: 'center' });
-
-        // Date
-        doc.setFontSize(10);
-        doc.text(`Date: ${new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}`, 148.5, 155, { align: 'center' });
-
-        // Signatures
-        doc.setDrawColor(150, 150, 170);
-        doc.setLineWidth(0.5);
-        doc.line(40, 175, 110, 175);
-        doc.line(187, 175, 257, 175);
-        doc.setFontSize(9);
-        doc.text('Workshop Director', 75, 182, { align: 'center' });
-        doc.text('Technical Lead', 222, 182, { align: 'center' });
-
-        // QR Code placeholder area
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 170);
-        doc.text('VibeBuild Workshop Certificate', 148.5, 195, { align: 'center' });
-
-        doc.save(`VibeBuild_${type}_certificate_${user?.teamId || 'team'}.pdf`);
-    };
-
-    if (!user) return null;
+    if (loading) return null;
 
     return (
         <div className="page-container">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <h1 className="section-title">🎓 Certificates</h1>
-                <p className="section-subtitle">Download your workshop certificates</p>
+                <h1 className="section-title">🏅 Certificates</h1>
+                <p className="section-subtitle">{isAdmin ? 'Issue and manage certificates' : 'View your earned certificates'}</p>
             </motion.div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', maxWidth: 700, margin: '0 auto' }}>
-                <ScrollReveal>
-                    <GlassCard style={{ textAlign: 'center', padding: '2.5rem 2rem' }}>
-                        <motion.div
-                            whileHover={{ rotate: [0, -5, 5, 0] }}
-                            style={{
-                                width: 64, height: 64, borderRadius: 16, margin: '0 auto 1rem',
-                                background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1))',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                        >
-                            <Award size={32} color="#6366f1" />
-                        </motion.div>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>Participation Certificate</h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                            Certificate acknowledging your participation in the VibeBuild workshop
-                        </p>
-                        <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: 12, background: 'rgba(99,102,241,0.05)' }}>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-                                <User size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-                                {user.name} · {user.teamId}
-                            </p>
-                        </div>
-                        <button className="glow-btn" onClick={() => generateCertificate('participation')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%' }}>
-                            <Download size={16} /> Download PDF
-                        </button>
-                    </GlassCard>
-                </ScrollReveal>
+            {/* Toast */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', top: 90, right: 24, zIndex: 1000, padding: '14px 20px', borderRadius: 14, background: 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(16,185,129,0.3)' }}>
+                        <CheckCircle2 size={18} /> {toast}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                <ScrollReveal delay={0.1}>
-                    <GlassCard style={{ textAlign: 'center', padding: '2.5rem 2rem' }}>
-                        <motion.div
-                            whileHover={{ rotate: [0, -5, 5, 0] }}
-                            style={{
-                                width: 64, height: 64, borderRadius: 16, margin: '0 auto 1rem',
-                                background: 'linear-gradient(135deg, rgba(236,72,153,0.1), rgba(139,92,246,0.1))',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                        >
-                            <Award size={32} color="#ec4899" />
-                        </motion.div>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>Completion Certificate</h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                            Certificate for successfully completing and submitting your project
-                        </p>
-                        <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: 12, background: 'rgba(236,72,153,0.05)' }}>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-                                <Users size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-                                {user.domain}
-                            </p>
-                        </div>
-                        <button className="glow-btn" onClick={() => generateCertificate('completion')}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
-                            <Download size={16} /> Download PDF
+            {/* Admin: Add Certificate */}
+            {isAdmin && (
+                <ScrollReveal>
+                    <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button className="glow-btn" onClick={() => setShowAdd(!showAdd)} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {showAdd ? <X size={18} /> : <Plus size={18} />}
+                            {showAdd ? 'Cancel' : 'Issue Certificate'}
                         </button>
-                    </GlassCard>
+                    </div>
                 </ScrollReveal>
-            </div>
+            )}
+
+            {/* Add Certificate Form */}
+            <AnimatePresence>
+                {showAdd && isAdmin && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+                        <GlassCard hover={false} style={{ marginBottom: '1.5rem' }}>
+                            <h3 style={{ fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Award size={18} color="#f59e0b" /> Issue New Certificate
+                            </h3>
+                            <form onSubmit={handleAdd}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+                                            <User size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                                            Student Name *
+                                        </label>
+                                        <input className="glow-input" placeholder="e.g. John Doe" value={form.studentName} onChange={e => setForm(f => ({ ...f, studentName: e.target.value }))} required />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+                                            <Hash size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                                            Student ID *
+                                        </label>
+                                        <input className="glow-input" placeholder="e.g. 25EC080" value={form.studentId} onChange={e => setForm(f => ({ ...f, studentId: e.target.value.toUpperCase() }))} required />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Certificate Type</label>
+                                        <select className="glow-input" value={form.certificateType} onChange={e => setForm(f => ({ ...f, certificateType: e.target.value }))}>
+                                            <option value="participation">Participation</option>
+                                            <option value="completion">Completion</option>
+                                            <option value="excellence">Excellence</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Certificate URL</label>
+                                        <input className="glow-input" placeholder="https://drive.google.com/..." value={form.certificateUrl} onChange={e => setForm(f => ({ ...f, certificateUrl: e.target.value }))} type="url" />
+                                    </div>
+                                </div>
+                                <motion.button type="submit" className="glow-btn" disabled={submitting} whileTap={{ scale: 0.98 }}
+                                    style={{ marginTop: '1rem', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Award size={16} /> {submitting ? 'Issuing...' : 'Issue Certificate'}
+                                </motion.button>
+                            </form>
+                        </GlassCard>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Certificates List */}
+            {fetching ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading certificates...</div>
+            ) : certificates.length === 0 ? (
+                <GlassCard style={{ textAlign: 'center', padding: '3rem' }}>
+                    <Award size={48} color="var(--text-muted)" style={{ marginBottom: '1rem' }} />
+                    <h3 style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {isAdmin ? 'No certificates issued yet' : 'No certificates found for your account'}
+                    </h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                        {isAdmin ? 'Issue certificates to participants using the button above' : 'Certificates will appear here once issued by admin'}
+                    </p>
+                </GlassCard>
+            ) : (
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    {certificates.map((cert, i) => (
+                        <ScrollReveal key={cert._id || i} delay={i * 0.05}>
+                            <GlassCard style={{
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '1rem 1.25rem', flexWrap: 'wrap', gap: '0.75rem',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 200 }}>
+                                    <div style={{
+                                        width: 44, height: 44, borderRadius: 12,
+                                        background: cert.certificateType === 'excellence' ? 'linear-gradient(135deg, #f59e0b, #ef4444)' :
+                                            cert.certificateType === 'completion' ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' :
+                                                'linear-gradient(135deg, #10b981, #06b6d4)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Award size={22} color="white" />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{cert.studentName}</div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 2 }}>
+                                            <span>ID: {cert.studentId}</span>
+                                            <span className="badge" style={{
+                                                fontSize: '0.72rem',
+                                                background: cert.certificateType === 'excellence' ? 'rgba(245,158,11,0.1)' :
+                                                    cert.certificateType === 'completion' ? 'rgba(99,102,241,0.1)' :
+                                                        'rgba(16,185,129,0.1)',
+                                                color: cert.certificateType === 'excellence' ? '#d97706' :
+                                                    cert.certificateType === 'completion' ? '#6366f1' : '#10b981',
+                                            }}>
+                                                {cert.certificateType}
+                                            </span>
+                                            <span>{new Date(cert.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {cert.certificateUrl && (
+                                        <a href={cert.certificateUrl} target="_blank" rel="noopener noreferrer"
+                                            style={{
+                                                padding: '8px 14px', borderRadius: 10, background: 'rgba(99,102,241,0.1)',
+                                                color: 'var(--accent-blue)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6,
+                                                fontWeight: 500, fontSize: '0.85rem',
+                                            }}>
+                                            <Download size={14} /> View
+                                        </a>
+                                    )}
+                                    {isAdmin && (
+                                        <button onClick={() => handleDelete(cert._id)}
+                                            style={{ padding: '8px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            </GlassCard>
+                        </ScrollReveal>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

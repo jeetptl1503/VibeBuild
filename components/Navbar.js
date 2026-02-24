@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, LogOut, Shield, LayoutDashboard, Globe, Image, Calendar, HelpCircle, Award, BarChart3, Users } from 'lucide-react';
+import { Menu, X, LogOut, Home, LayoutDashboard, Globe, Image, HelpCircle, Award, BarChart3, Users, UserCheck } from 'lucide-react';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -18,9 +18,8 @@ export default function Navbar() {
     };
 
     const publicLinks = [
-        { href: '/', label: 'Home', icon: Globe },
+        { href: '/', label: 'Home', icon: Home },
         { href: '/showcase', label: 'Showcase', icon: Globe },
-        { href: '/schedule', label: 'Schedule', icon: Calendar },
         { href: '/faq', label: 'FAQ', icon: HelpCircle },
     ];
 
@@ -29,17 +28,16 @@ export default function Navbar() {
         { href: '/showcase', label: 'Showcase', icon: Globe },
         { href: '/gallery', label: 'Gallery', icon: Image },
         { href: '/certificates', label: 'Certificates', icon: Award },
-        { href: '/schedule', label: 'Schedule', icon: Calendar },
         { href: '/faq', label: 'FAQ', icon: HelpCircle },
     ];
 
     const adminLinks = [
-        { href: '/admin', label: 'Admin', icon: Shield },
-        { href: '/admin/attendance', label: 'Attendance', icon: Users },
+        { href: '/admin', label: '🏠 Home', icon: Home },
+        { href: '/admin/attendance', label: 'Attendance', icon: UserCheck },
         { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
         { href: '/showcase', label: 'Showcase', icon: Globe },
         { href: '/gallery', label: 'Gallery', icon: Image },
-        { href: '/schedule', label: 'Schedule', icon: Calendar },
+        { href: '/certificates', label: 'Certificates', icon: Award },
     ];
 
     const links = !user ? publicLinks : user.role === 'admin' ? adminLinks : teamLinks;
@@ -56,7 +54,7 @@ export default function Navbar() {
                 <div className="nav-links" style={mobileOpen ? { display: 'flex', flexDirection: 'column', position: 'absolute', top: 70, left: 0, right: 0, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', padding: '1rem', borderBottom: '1px solid rgba(200,210,255,0.35)', zIndex: 100 } : {}}>
                     {links.map(link => (
                         <Link
-                            key={link.href}
+                            key={link.href + link.label}
                             href={link.href}
                             className={`nav-link ${pathname === link.href ? 'active' : ''}`}
                             onClick={() => setMobileOpen(false)}

@@ -5,7 +5,7 @@ export function middleware(request) {
     const { pathname } = request.nextUrl;
 
     // Public routes that don't need auth
-    const publicRoutes = ['/', '/login', '/showcase', '/schedule', '/faq'];
+    const publicRoutes = ['/', '/login', '/showcase', '/faq'];
     const publicApiRoutes = ['/api/auth/login', '/api/projects/public', '/api/stats', '/api/admin/settings'];
 
     if (publicRoutes.includes(pathname) || publicApiRoutes.some(r => pathname.startsWith(r))) {

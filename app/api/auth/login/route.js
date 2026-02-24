@@ -41,6 +41,7 @@ export async function POST(request) {
         const response = NextResponse.json({
             success: true,
             token,
+            needsPasswordSetup: team.needsPasswordSetup || false,
             team: {
                 teamId: team.teamId,
                 name: team.name,

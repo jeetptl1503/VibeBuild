@@ -31,20 +31,32 @@ export async function POST(request) {
         }
 
         const body = await request.json();
-        const { participantName, teamName, email, firstHalf, secondHalf, remarks } = body;
+        const { participantName, studentId, firstHalf, secondHalf, remarks } = body;
 
-        if (!participantName || !teamName || !email) {
-            return NextResponse.json({ error: 'Name, team, and email are required' }, { status: 400 });
+        if (!participantName || !studentId) {
+            return NextResponse.json({ error: 'Student name and ID are required' }, { status: 400 });
         }
 
         const dbAvailable = await tryDb();
         if (dbAvailable) {
             const Attendance = (await import('@/lib/models/Attendance')).default;
-            const record = await Attendance.create({ participantName, teamName, email, firstHalf: firstHalf || false, secondHalf: secondHalf || false, remarks: remarks || '' });
+            const record = await Attendance.create({
+                participantName,
+                studentId: studentId.toUpperCase(),
+                firstHalf: firstHalf || false,
+                secondHalf: secondHalf || false,
+                remarks: remarks || '',
+            });
             return NextResponse.json({ record }, { status: 201 });
         } else {
             const { addAttendance } = await import('@/lib/memoryStore');
-            const record = addAttendance({ participantName, teamName, email, firstHalf: firstHalf || false, secondHalf: secondHalf || false, remarks: remarks || '' });
+            const record = addAttendance({
+                participantName,
+                studentId: studentId.toUpperCase(),
+                firstHalf: firstHalf || false,
+                secondHalf: secondHalf || false,
+                remarks: remarks || '',
+            });
             return NextResponse.json({ record }, { status: 201 });
         }
     } catch (error) {
