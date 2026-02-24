@@ -39,11 +39,11 @@ export async function POST(request) {
         const dbAvailable = await tryDb();
         if (dbAvailable) {
             const Gallery = (await import('@/lib/models/Gallery')).default;
-            const item = await Gallery.create({ filename, url, type: type || 'image', caption: caption || '', publicVisible: publicVisible !== false, uploadedBy: user.teamId });
+            const item = await Gallery.create({ filename, url, type: type || 'image', caption: caption || '', publicVisible: publicVisible !== false, uploadedBy: user.userId });
             return NextResponse.json({ item }, { status: 201 });
         } else {
             const { addGalleryItem } = await import('@/lib/memoryStore');
-            const item = addGalleryItem({ filename, url, type: type || 'image', caption: caption || '', publicVisible: publicVisible !== false, uploadedBy: user.teamId });
+            const item = addGalleryItem({ filename, url, type: type || 'image', caption: caption || '', publicVisible: publicVisible !== false, uploadedBy: user.userId });
             return NextResponse.json({ item }, { status: 201 });
         }
     } catch (error) {

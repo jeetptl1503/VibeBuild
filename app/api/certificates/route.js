@@ -14,7 +14,7 @@ export async function GET(request) {
         } else {
             // Participants see only their own certificates
             const { getCertificateByStudentId } = await import('@/lib/memoryStore');
-            return NextResponse.json({ certificates: getCertificateByStudentId(user.teamId) });
+            return NextResponse.json({ certificates: getCertificateByStudentId(user.userId) });
         }
     } catch (error) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -41,7 +41,7 @@ export async function POST(request) {
             studentId: studentId.toUpperCase(),
             certificateUrl: certificateUrl || '',
             certificateType: certificateType || 'participation',
-            issuedBy: user.teamId,
+            issuedBy: user.userId,
         });
 
         return NextResponse.json({ certificate }, { status: 201 });

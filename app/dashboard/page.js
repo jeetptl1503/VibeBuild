@@ -5,18 +5,28 @@ import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard, ScrollReveal } from '@/components/UIComponents';
 import ReactConfetti from 'react-confetti';
-import { Clock, Github, Globe, Code2, Send, Save, Edit3, CheckCircle2, AlertCircle, Sparkles, ExternalLink, Tag, X } from 'lucide-react';
+import { Clock, Github, Globe, Code2, Send, Save, Edit3, CheckCircle2, AlertCircle, Sparkles, ExternalLink, Tag, X, Users, Plus, UserPlus, Trash2 } from 'lucide-react';
+
+const DOMAINS = ['Healthcare AI', 'Agriculture AI', 'Smart Cities', 'Education Tech'];
 
 export default function DashboardPage() {
     const { user, loading, authFetch } = useAuth();
     const router = useRouter();
     const [project, setProject] = useState(null);
     const [settings, setSettings] = useState(null);
+    const [team, setTeam] = useState(null);
     const [timeLeft, setTimeLeft] = useState({});
     const [showConfetti, setShowConfetti] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [techInput, setTechInput] = useState('');
+
+    // Team creation state
+    const [showTeamForm, setShowTeamForm] = useState(false);
+    const [teamCreating, setTeamCreating] = useState(false);
+    const [teamForm, setTeamForm] = useState({
+        teamName: '', domain: 'Healthcare AI', members: [{ name: '', userId: '' }],
+    });
 
     const [form, setForm] = useState({
         title: '', description: '', githubUrl: '', liveUrl: '', techStack: [],
@@ -41,6 +51,7 @@ export default function DashboardPage() {
                     });
                 }
             });
+            authFetch('/api/teams').then(r => r.json()).then(data => setTeam(data.team));
             fetch('/api/admin/settings').then(r => r.json()).then(data => setSettings(data.settings));
         }
     }, [user]);
@@ -107,9 +118,56 @@ export default function DashboardPage() {
         }
     };
 
+    // Team creation handlers
+    const addMemberRow = () => {
+        setTeamForm(f => ({ ...f, members: [...f.members, { name: '', userId: '' }] }));
+    };
+
+    const removeMemberRow = (i) => {
+        setTeamForm(f => ({ ...f, members: f.members.filter((_, idx) => idx !== i) }));
+    };
+
+    const updateMember = (i, field, value) => {
+        setTeamForm(f => {
+            const members = [...f.members];
+            members[i] = { ...members[i], [field]: value };
+            return { ...f, members };
+        });
+    };
+
+    const handleCreateTeam = async () => {
+        setMessage({ type: '', text: '' });
+        if (!teamForm.teamName.trim()) {
+            setMessage({ type: 'error', text: 'Team name is required' });
+            return;
+        }
+        // Filter out empty member rows
+        const members = teamForm.members.filter(m => m.name.trim() && m.userId.trim());
+
+        setTeamCreating(true);
+        try {
+            const res = await authFetch('/api/teams', {
+                method: 'POST',
+                body: JSON.stringify({ teamName: teamForm.teamName, domain: teamForm.domain, members }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setTeam(data.team);
+                setShowTeamForm(false);
+                setMessage({ type: 'success', text: '🎉 Team created successfully!' });
+            } else {
+                setMessage({ type: 'error', text: data.error });
+            }
+        } catch {
+            setMessage({ type: 'error', text: 'Failed to create team' });
+        } finally {
+            setTeamCreating(false);
+        }
+    };
+
     if (loading || !user) return null;
 
-    const progress = project?.status === 'submitted' ? 100 : project ? 60 : 0;
+    const progress = project?.status === 'submitted' ? 100 : project ? 60 : team ? 30 : 0;
 
     return (
         <div className="page-container">
@@ -123,7 +181,8 @@ export default function DashboardPage() {
                             Welcome, <span style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user.name}</span>! 👋
                         </h1>
                         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span className="badge">🎯 {user.domain}</span>
+                            {team && <span className="badge">🎯 {team.domain}</span>}
+                            {team && <span className="badge">👥 {team.teamName}</span>}
                             <span className="badge" style={{ background: project?.status === 'submitted' ? 'rgba(34,197,94,0.1)' : 'rgba(234,179,8,0.1)', color: project?.status === 'submitted' ? '#16a34a' : '#ca8a04', borderColor: project?.status === 'submitted' ? 'rgba(34,197,94,0.2)' : 'rgba(234,179,8,0.2)' }}>
                                 {project?.status === 'submitted' ? '✅ Submitted' : project ? '📝 Draft' : '⏳ Not Started'}
                             </span>
@@ -166,25 +225,125 @@ export default function DashboardPage() {
                 </GlassCard>
             </ScrollReveal>
 
+            {/* Team Section */}
+            <ScrollReveal delay={0.05}>
+                <GlassCard hover={false} style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                            <Users size={20} color="#6366f1" /> My Team
+                        </h2>
+                        {!team && (
+                            <button className="glow-btn" onClick={() => setShowTeamForm(!showTeamForm)} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {showTeamForm ? <X size={16} /> : <Plus size={16} />}
+                                {showTeamForm ? 'Cancel' : 'Create Team'}
+                            </button>
+                        )}
+                    </div>
+
+                    {team ? (
+                        /* Show existing team */
+                        <div>
+                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                <div style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Team Name</span>
+                                    <span style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>{team.teamName}</span>
+                                </div>
+                                <div style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Domain</span>
+                                    <span style={{ fontWeight: 700, color: '#7c3aed' }}>{team.domain}</span>
+                                </div>
+                                <div style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.15)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Leader</span>
+                                    <span style={{ fontWeight: 700, color: '#ec4899' }}>{team.leaderName}</span>
+                                </div>
+                            </div>
+                            {team.members?.length > 0 && (
+                                <div>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Team Members</span>
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        {team.members.map((m, i) => (
+                                            <span key={i} className="badge" style={{ padding: '6px 14px' }}>
+                                                {m.name} <span style={{ opacity: 0.6 }}>({m.userId})</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : showTeamForm ? (
+                        /* Team creation form */
+                        <div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Team Name *</label>
+                                    <input className="glow-input" placeholder="e.g. Team AlphaNova" value={teamForm.teamName} onChange={e => setTeamForm(f => ({ ...f, teamName: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Domain *</label>
+                                    <select className="glow-input" value={teamForm.domain} onChange={e => setTeamForm(f => ({ ...f, domain: e.target.value }))}>
+                                        {DOMAINS.map(d => <option key={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                        <UserPlus size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Team Members
+                                    </label>
+                                    <button onClick={addMemberRow} style={{ padding: '4px 12px', borderRadius: 8, border: '1px solid var(--border-glass)', background: 'rgba(99,102,241,0.05)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500, color: 'var(--accent-blue)' }}>
+                                        + Add Member
+                                    </button>
+                                </div>
+                                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                                    {teamForm.members.map((m, i) => (
+                                        <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <input className="glow-input" placeholder="Member Name" value={m.name} onChange={e => updateMember(i, 'name', e.target.value)} style={{ flex: 1 }} />
+                                            <input className="glow-input" placeholder="Member User ID" value={m.userId} onChange={e => updateMember(i, 'userId', e.target.value.toUpperCase())} style={{ flex: 1 }} />
+                                            {teamForm.members.length > 1 && (
+                                                <button onClick={() => removeMemberRow(i)} style={{ padding: 6, borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <motion.button whileTap={{ scale: 0.98 }} className="glow-btn" onClick={handleCreateTeam} disabled={teamCreating}
+                                style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Users size={16} /> {teamCreating ? 'Creating...' : 'Create Team'}
+                            </motion.button>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
+                            <Users size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+                            <p style={{ margin: 0 }}>You haven&apos;t created a team yet. Create one to get started!</p>
+                        </div>
+                    )}
+                </GlassCard>
+            </ScrollReveal>
+
+            {/* Message Display */}
+            {message.text && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        padding: '12px 16px', borderRadius: 12, marginBottom: '1rem',
+                        background: message.type === 'error' ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+                        border: `1px solid ${message.type === 'error' ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`,
+                        color: message.type === 'error' ? '#dc2626' : '#16a34a',
+                        fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                    {message.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />} {message.text}
+                </motion.div>
+            )}
+
             {/* Submission Form */}
             <ScrollReveal delay={0.1}>
                 <GlassCard hover={false} style={{ marginBottom: '2rem' }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Code2 size={20} color="#6366f1" /> Project Submission
                     </h2>
-
-                    {message.text && (
-                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-                            style={{
-                                padding: '12px 16px', borderRadius: 12, marginBottom: '1rem',
-                                background: message.type === 'error' ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
-                                border: `1px solid ${message.type === 'error' ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`,
-                                color: message.type === 'error' ? '#dc2626' : '#16a34a',
-                                fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8,
-                            }}>
-                            {message.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />} {message.text}
-                        </motion.div>
-                    )}
 
                     <div style={{ display: 'grid', gap: '1rem' }}>
                         <div>

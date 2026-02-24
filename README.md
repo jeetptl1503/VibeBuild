@@ -1,6 +1,6 @@
 # 🚀 VibeBuild — AI Driven Solutions & Vibe Coding
 
-A modern, animated workshop platform built for hackathon-style AI workshops. Teams log in, submit projects, get AI-powered guidance, and showcase their work — all from one beautiful dashboard.
+A modern, animated workshop platform built for hackathon-style AI workshops. Participants log in individually, form their own teams, submit projects, get AI-powered guidance, and showcase their work — all from one beautiful dashboard.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
@@ -14,14 +14,15 @@ A modern, animated workshop platform built for hackathon-style AI workshops. Tea
 
 | Feature | Description |
 |---------|-------------|
-| 🔐 **Auth System** | JWT login with pre-assigned Team IDs & admin role |
-| 📊 **Team Dashboard** | Countdown timer, progress tracker, project submission with confetti |
+| 🔐 **Individual Auth** | JWT login with unique User IDs — each participant has their own account |
+| 👥 **Self-Service Teams** | Participants create teams from the dashboard (team name, members, domain) |
+| 📊 **Dashboard** | Countdown timer, progress tracker, team creation, project submission with confetti |
 | 🌍 **Project Showcase** | Public grid with domain filters, search, hover animations & student submission form |
 | 🤖 **AI Chatbot** | Floating assistant with OpenAI integration + built-in fallback guides for GitHub & Vercel deployment |
 | 🖼️ **Gallery** | Masonry layout with lightbox, video model & admin upload/approval system |
 | 📋 **Attendance** | Admin CRUD with first/second half toggles & CSV export |
 | 📈 **Reports** | Upload & manage event materials (PDFs, images, presentations) with category filtering |
-| 🛠️ **Admin Panel** | Manage teams, toggle submissions, control workshop timer |
+| 🛠️ **Admin Panel** | Manage participants, toggle submissions, control workshop timer |
 | 🎓 **Certificates** | Admin-issued certificates (name, ID, type) with PDF generation & QR code |
 | ❓ **FAQ** | Smooth accordion section powered by Radix UI |
 
@@ -96,23 +97,19 @@ npm start
 
 ---
 
-## 🔑 Login Credentials
+## 🔑 How It Works
 
-The app comes with **3 pre-configured admin accounts**. No database setup needed!
+### Admins
+- Pre-configured admin accounts are set up in the system
+- First login requires setting a new password
+- Admins can add participants via the **Admin Panel** (User ID, Password, Name)
 
-### Default Admin Accounts
+### Participants
+- Log in with credentials assigned by the admin
+- Create a team from the **Dashboard**: enter team name, domain, and add teammates (name + User ID)
+- Submit projects with GitHub links, live demos, and tech stack details
 
-| ID | Name | Temporary Password |
-|----|------|--------------------|
-| `DMP001` | Faculty Coordinator | `temppass2024` |
-| `25EC080` | Student Coordinator 1 | `temppass2024` |
-| `25EC112` | Student Coordinator 2 | `temppass2024` |
-
-> **Note:** On first login, admins are prompted to set a new password. After that, use the newly set password to log in.
-
-### Adding Teams
-
-Teams are **not pre-loaded** — admins create them via the **Admin Panel**. Once created, team members log in with the credentials assigned by the admin.
+> **Note:** Login credentials are managed privately by workshop organizers and are not published here.
 
 ---
 
@@ -124,24 +121,25 @@ Teams are **not pre-loaded** — admins create them via the **Admin Panel**. Onc
 │   ├── layout.js            # Root layout with Navbar, Footer, ChatBot
 │   ├── globals.css           # Global styles & design tokens
 │   ├── login/               # Authentication page
-│   ├── dashboard/           # Team dashboard & project submission
+│   ├── dashboard/           # Participant dashboard, team creation & project submission
 │   ├── showcase/            # Public project showcase + student submissions
 │   ├── gallery/             # Media gallery with admin approval
 │   ├── certificates/        # Certificate viewer & PDF generation
 │   ├── faq/                 # FAQ accordion section
 │   ├── admin/
-│   │   ├── page.js          # Admin panel
+│   │   ├── page.js          # Admin panel — manage participants
 │   │   ├── attendance/      # Attendance tracking
 │   │   └── reports/         # Reports & materials management
 │   └── api/
-│       ├── auth/            # Login, register, verify endpoints
+│       ├── auth/            # Login, set-password, verify, logout
 │       ├── projects/        # Project CRUD
+│       ├── teams/           # Participant team creation & management
 │       ├── attendance/      # Attendance CRUD
 │       ├── gallery/         # Gallery upload & approval
 │       ├── certificates/    # Certificate issuance
 │       ├── reports/         # Reports management
 │       ├── chat/            # AI chatbot endpoint
-│       ├── admin/           # Admin settings
+│       ├── admin/           # Participant management & settings
 │       └── stats/           # Workshop statistics
 ├── components/
 │   ├── Navbar.js            # Navigation bar
@@ -156,13 +154,12 @@ Teams are **not pre-loaded** — admins create them via the **Admin Panel**. Onc
 │   ├── AuthContext.js       # React auth context provider
 │   ├── memoryStore.js       # In-memory fallback data store
 │   └── models/
-│       ├── Team.js          # Team schema
+│       ├── User.js          # User account schema (admins + participants)
+│       ├── Team.js          # User-created team schema
 │       ├── Project.js       # Project submission schema
 │       ├── Attendance.js    # Attendance record schema
 │       ├── Gallery.js       # Gallery item schema
 │       └── Settings.js      # Workshop settings schema
-├── scripts/
-│   └── seed.js              # Database seed script
 ├── middleware.js             # Route protection & JWT verification
 └── public/                  # Static assets
 ```

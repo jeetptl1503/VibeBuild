@@ -24,11 +24,11 @@ export async function GET(request) {
         const dbAvailable = await tryDb();
         if (dbAvailable) {
             const Project = (await import('@/lib/models/Project')).default;
-            const project = await Project.findOne({ teamId: user.teamId });
+            const project = await Project.findOne({ userId: user.userId });
             return NextResponse.json({ project: project || null });
         } else {
-            const { findProjectByTeamId } = await import('@/lib/memoryStore');
-            return NextResponse.json({ project: findProjectByTeamId(user.teamId) });
+            const { findProjectByUserId } = await import('@/lib/memoryStore');
+            return NextResponse.json({ project: findProjectByUserId(user.userId) });
         }
     } catch (error) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -54,10 +54,25 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Invalid GitHub URL format' }, { status: 400 });
         }
 
+        // Get user's team info if available
+        let teamName = '';
+        let domain = '';
         const dbAvailable = await tryDb();
         if (dbAvailable) {
+            const Team = (await import('@/lib/models/Team')).default;
+            const team = await Team.findOne({
+                $or: [{ leaderId: user.userId }, { 'members.userId': user.userId }]
+            });
+            if (team) { teamName = team.teamName; domain = team.domain; }
+        } else {
+            const { getTeamByMember } = await import('@/lib/memoryStore');
+            const team = getTeamByMember(user.userId);
+            if (team) { teamName = team.teamName; domain = team.domain; }
+        }
+
+        if (dbAvailable) {
             const Project = (await import('@/lib/models/Project')).default;
-            const existing = await Project.findOne({ teamId: user.teamId });
+            const existing = await Project.findOne({ userId: user.userId });
             if (existing) {
                 existing.title = title;
                 existing.description = description;
@@ -65,21 +80,23 @@ export async function POST(request) {
                 existing.liveUrl = liveUrl || '';
                 existing.techStack = techStack || [];
                 existing.status = status || 'submitted';
+                existing.teamName = teamName;
+                existing.domain = domain;
                 existing.updatedAt = new Date();
                 if (status === 'submitted' && !existing.submittedAt) existing.submittedAt = new Date();
                 await existing.save();
                 return NextResponse.json({ project: existing, updated: true });
             }
             const project = await Project.create({
-                teamId: user.teamId, teamName: user.name, domain: user.domain,
+                userId: user.userId, userName: user.name, teamName, domain,
                 title, description, githubUrl, liveUrl: liveUrl || '', techStack: techStack || [],
                 status: status || 'submitted', submittedAt: status === 'submitted' ? new Date() : null,
             });
             return NextResponse.json({ project, created: true }, { status: 201 });
         } else {
             const { upsertProject } = await import('@/lib/memoryStore');
-            const result = upsertProject(user.teamId, {
-                teamId: user.teamId, teamName: user.name, domain: user.domain,
+            const result = upsertProject(user.userId, {
+                userId: user.userId, userName: user.name, teamName, domain,
                 title, description, githubUrl, liveUrl: liveUrl || '', techStack: techStack || [],
                 status: status || 'submitted', submittedAt: status === 'submitted' ? new Date().toISOString() : null,
             });

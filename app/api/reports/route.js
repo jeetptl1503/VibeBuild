@@ -37,7 +37,7 @@ export async function POST(request) {
             fileType: fileType || 'other',
             category: category || 'Other',
             description: description || '',
-            uploadedBy: user.teamId,
+            uploadedBy: user.userId,
         });
 
         return NextResponse.json({ report }, { status: 201 });

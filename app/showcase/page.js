@@ -196,7 +196,7 @@ export default function ShowcasePage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                                     <div>
                                         <h3 style={{ fontWeight: 700, fontSize: '1.05rem', margin: 0 }}>{project.title}</h3>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '2px 0' }}>{project.teamName || project.teamId}</p>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '2px 0' }}>{project.teamName || project.userName || project.userId}</p>
                                     </div>
                                     <span className="badge">{project.domain}</span>
                                 </div>

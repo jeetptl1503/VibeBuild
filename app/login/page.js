@@ -8,7 +8,7 @@ import { LogIn, Eye, EyeOff, Sparkles, Zap, AlertCircle, Lock, CheckCircle2 } fr
 export default function LoginPage() {
     const { login, authFetch } = useAuth();
     const router = useRouter();
-    const [teamId, setTeamId] = useState('');
+    const [userId, setUserId] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
@@ -24,7 +24,7 @@ export default function LoginPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        if (!teamId.trim() || !password.trim()) {
+        if (!userId.trim() || !password.trim()) {
             setError('Please fill in all fields');
             return;
         }
@@ -33,7 +33,7 @@ export default function LoginPage() {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teamId, password }),
+                body: JSON.stringify({ userId, password }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -47,7 +47,7 @@ export default function LoginPage() {
             }
 
             // Normal login flow
-            const user = await login(teamId, password);
+            const user = await login(userId, password);
             if (user.role === 'admin') {
                 router.push('/admin');
             } else {
@@ -89,7 +89,7 @@ export default function LoginPage() {
             if (!res.ok) throw new Error(data.error);
 
             // Re-login with new password
-            const user = await login(teamId, newPassword);
+            const user = await login(userId, newPassword);
             if (user.role === 'admin') {
                 router.push('/admin');
             } else {
@@ -184,7 +184,7 @@ export default function LoginPage() {
                             fontSize: '0.82rem', color: 'var(--accent-blue)',
                             display: 'flex', alignItems: 'center', gap: 8,
                         }}>
-                            <CheckCircle2 size={16} /> Logged in as <strong>{teamId}</strong>
+                            <CheckCircle2 size={16} /> Logged in as <strong>{userId}</strong>
                         </div>
 
                         <div style={{ marginBottom: '1rem' }}>
@@ -252,9 +252,9 @@ export default function LoginPage() {
                             <input
                                 className="glow-input"
                                 type="text"
-                                placeholder="e.g. DMP001 or 25EC080"
-                                value={teamId}
-                                onChange={(e) => setTeamId(e.target.value.toUpperCase())}
+                                placeholder="Enter your User ID"
+                                value={userId}
+                                onChange={(e) => setUserId(e.target.value.toUpperCase())}
                                 autoComplete="username"
                             />
                         </div>

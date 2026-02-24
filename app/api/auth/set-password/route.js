@@ -20,14 +20,14 @@ export async function POST(request) {
 
         const dbAvailable = await tryDb();
         if (dbAvailable) {
-            const Team = (await import('@/lib/models/Team')).default;
-            await Team.updateOne(
-                { teamId: user.teamId },
+            const User = (await import('@/lib/models/User')).default;
+            await User.updateOne(
+                { userId: user.userId },
                 { password: hashedPassword, needsPasswordSetup: false }
             );
         } else {
-            const { updateTeam } = await import('@/lib/memoryStore');
-            updateTeam(user.teamId, { password: hashedPassword, needsPasswordSetup: false });
+            const { updateUser } = await import('@/lib/memoryStore');
+            updateUser(user.userId, { password: hashedPassword, needsPasswordSetup: false });
         }
 
         return NextResponse.json({ success: true, message: 'Password updated successfully' });

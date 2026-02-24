@@ -5,48 +5,46 @@ import { tryDb } from '@/lib/tryDb';
 
 export async function POST(request) {
     try {
-        const { teamId, password } = await request.json();
+        const { userId, password } = await request.json();
 
-        if (!teamId || !password) {
-            return NextResponse.json({ error: 'Team ID and password are required' }, { status: 400 });
+        if (!userId || !password) {
+            return NextResponse.json({ error: 'User ID and password are required' }, { status: 400 });
         }
 
-        let team = null;
+        let user = null;
         const dbAvailable = await tryDb();
 
         if (dbAvailable) {
-            const Team = (await import('@/lib/models/Team')).default;
-            team = await Team.findOne({ teamId: teamId.toUpperCase() });
+            const User = (await import('@/lib/models/User')).default;
+            user = await User.findOne({ userId: userId.toUpperCase() });
         } else {
-            const { findTeamByTeamId } = await import('@/lib/memoryStore');
-            team = findTeamByTeamId(teamId.toUpperCase());
+            const { findUserByUserId } = await import('@/lib/memoryStore');
+            user = findUserByUserId(userId.toUpperCase());
         }
 
-        if (!team) {
+        if (!user) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
-        const isValid = await bcryptjs.compare(password, team.password);
+        const isValid = await bcryptjs.compare(password, user.password);
         if (!isValid) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
         const token = await signToken({
-            teamId: team.teamId,
-            name: team.name,
-            domain: team.domain,
-            role: team.role,
+            userId: user.userId,
+            name: user.name,
+            role: user.role,
         });
 
         const response = NextResponse.json({
             success: true,
             token,
-            needsPasswordSetup: team.needsPasswordSetup || false,
-            team: {
-                teamId: team.teamId,
-                name: team.name,
-                domain: team.domain,
-                role: team.role,
+            needsPasswordSetup: user.needsPasswordSetup || false,
+            user: {
+                userId: user.userId,
+                name: user.name,
+                role: user.role,
             },
         });
 
