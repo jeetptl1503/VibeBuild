@@ -14,7 +14,7 @@ A modern, animated workshop platform built for hackathon-style AI workshops. Par
 
 | Feature | Description |
 |---------|-------------|
-| 🔐 **Individual Auth** | JWT login with unique User IDs — each participant has their own account |
+| 🔐 **Individual Auth** | JWT login via User ID or Email, rate-limited (5 attempts/15min), HTTP-only cookies |
 | 👥 **Self-Service Teams** | Participants create teams from the dashboard (team name, members, domain) |
 | 📊 **Dashboard** | Countdown timer, progress tracker, team creation, project submission with confetti |
 | 🌍 **Project Showcase** | Public grid with domain filters, search, hover animations & student submission form |
@@ -22,7 +22,7 @@ A modern, animated workshop platform built for hackathon-style AI workshops. Par
 | 🖼️ **Gallery** | Masonry layout with lightbox, video model & admin upload/approval system |
 | 📋 **Attendance** | Admin CRUD with first/second half toggles & CSV export |
 | 📈 **Reports** | Upload & manage event materials (PDFs, images, presentations) with category filtering |
-| 🛠️ **Admin Panel** | Manage participants, toggle submissions, control workshop timer |
+| 🛠️ **Admin Panel** | Manage participants (with email), toggle submissions, animated settings cards |
 | 🎓 **Certificates** | Admin-issued certificates (name, ID, type) with PDF generation & QR code |
 | ❓ **FAQ** | Smooth accordion section powered by Radix UI |
 
@@ -99,19 +99,33 @@ npm start
 
 ## 🔑 How It Works
 
-### Admins
-- Pre-configured admin accounts are set up in the system
-- First login requires setting a new password
-- Admins can add participants via the **Admin Panel** (User ID, Password, Name)
+### Admins (3 predefined accounts)
+| Admin ID | Role |
+|----------|------|
+| `DMP001` | Faculty Coordinator |
+| `25EC080` | Student Coordinator |
+| `25EC112` | Student Coordinator |
+
+- Auto-seeded on first MongoDB connection (default password: `temppass2024`)
+- First login prompts for password change
+- Can add participants (User ID, Password, Name, Email), edit, delete, and reset passwords
 
 ### Participants
-- Log in with credentials assigned by the admin
-- Create a team from the **Dashboard**: enter team name, domain, and add teammates (name + User ID)
+- Created **only** by admins — no self-registration
+- Log in with **User ID or Email** + password
+- Create a team from the **Dashboard**: enter team name, domain, and add teammates
 - Submit projects with GitHub links, live demos, and tech stack details
+- Change password (requires old password, min 8 chars)
 
-> **Note:** Login credentials are managed privately by workshop organizers and are not published here.
+### Security
+- 🔒 JWT stored in HTTP-only secure cookies
+- 🔒 bcrypt password hashing (10 salt rounds)
+- 🔒 Rate limiting: 5 login attempts per IP per 15 minutes
+- 🔒 Minimum password length: 8 characters
+- 🔒 No public registration API
+- 🔒 Middleware route protection for `/admin` and `/dashboard`
 
-> **Note:** Without MongoDB, data is stored in-memory and persists across hot reloads during development. A full server restart will reset all data to defaults.
+> **Note:** Without MongoDB, data is stored in-memory with file-based persistence (`.data/store.json`). Full data persists across server restarts locally.
 
 ---
 
@@ -133,7 +147,7 @@ npm start
 │   │   ├── attendance/      # Attendance tracking
 │   │   └── reports/         # Reports & materials management
 │   └── api/
-│       ├── auth/            # Login, set-password, verify, logout
+│       ├── auth/            # Login, set-password, change-password, verify, logout
 │       ├── projects/        # Project CRUD
 │       ├── teams/           # Participant team creation & management
 │       ├── attendance/      # Attendance CRUD
@@ -141,7 +155,7 @@ npm start
 │       ├── certificates/    # Certificate issuance
 │       ├── reports/         # Reports management
 │       ├── chat/            # AI chatbot endpoint
-│       ├── admin/           # Participant management & settings
+│       ├── admin/           # Participant management, create-user, reset-password & settings
 │       └── stats/           # Workshop statistics
 ├── components/
 │   ├── Navbar.js            # Navigation bar
@@ -170,21 +184,35 @@ npm start
 
 ## 🚢 Deployment
 
-### Vercel (Recommended)
+### Vercel + MongoDB Atlas (Recommended)
 
-1. Push your code to GitHub
-2. Import the repository on [vercel.com](https://vercel.com)
-3. Add environment variables in Vercel dashboard
-4. Deploy — Vercel auto-detects Next.js
+1. **MongoDB Atlas** (free): Create a cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas)
+   - Create a database user
+   - Set Network Access to `0.0.0.0/0` (Allow All)
+   - Copy connection string
 
-### Other Platforms
+2. **GitHub**: Push your code
+   ```bash
+   git add . && git commit -m "deploy" && git push origin main
+   ```
 
-The app is a standard Next.js application and can be deployed on any platform that supports Node.js:
+3. **Vercel**: Import repo at [vercel.com](https://vercel.com) and add environment variables:
+   | Variable | Value |
+   |----------|-------|
+   | `MONGODB_URI` | `mongodb+srv://user:pass@cluster.mongodb.net/vibebuild` |
+   | `JWT_SECRET` | Any secure random string |
+   | `OPENAI_API_KEY` | (Optional) OpenAI API key for chatbot |
+
+4. Deploy — admin accounts auto-seed on first connection
+
+### Local / Self-Hosted
 
 ```bash
 npm run build
 npm start
 ```
+
+Without MongoDB, data persists locally via `.data/store.json`.
 
 ---
 
