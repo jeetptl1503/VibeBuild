@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard, ScrollReveal } from '@/components/UIComponents';
-import { Shield, Users, Settings, Clock, Plus, Edit3, Trash2, Save, X, Image, BarChart3, UserCheck, Award, Home, Rocket } from 'lucide-react';
+import { Shield, Users, Settings, Clock, Plus, Edit3, Trash2, Save, X, Image, BarChart3, UserCheck, Award, Home, Rocket, KeyRound, Send, Sparkles } from 'lucide-react';
 
 export default function AdminPage() {
     const { user, loading, authFetch } = useAuth();
@@ -52,6 +52,21 @@ export default function AdminPage() {
         if (res.ok) setParticipants(prev => prev.filter(u => u.userId !== userId));
     };
 
+    const handleResetPassword = async (userId) => {
+        const newPassword = prompt(`Enter new password for ${userId} (min 6 characters):`);
+        if (!newPassword || newPassword.length < 6) {
+            if (newPassword !== null) alert('Password must be at least 6 characters');
+            return;
+        }
+        const res = await authFetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ userId, newPassword }) });
+        if (res.ok) {
+            alert(`Password reset successfully for ${userId}`);
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Failed to reset password');
+        }
+    };
+
     const handleUpdateSettings = async (key, value) => {
         const update = { [key]: value };
         const res = await authFetch('/api/admin/settings', { method: 'PUT', body: JSON.stringify(update) });
@@ -91,42 +106,148 @@ export default function AdminPage() {
             {/* Settings */}
             <ScrollReveal delay={0.1}>
                 <GlassCard hover={false} style={{ marginBottom: '2rem' }}>
-                    <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Settings size={20} color="#6366f1" /> Workshop Settings
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Settings size={18} color="white" />
+                        </div>
+                        Workshop Settings
                     </h2>
                     {settings && (
                         <div style={{ display: 'grid', gap: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 500 }}>Submissions Enabled</span>
-                                <button
-                                    className={`toggle-switch ${settings.submissionsEnabled ? 'active' : ''}`}
+                            {/* Toggle Cards Row */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                {/* Submissions Toggle */}
+                                <motion.div
+                                    whileHover={{ scale: 1.01 }}
+                                    style={{
+                                        padding: '1.25rem', borderRadius: 16,
+                                        background: settings.submissionsEnabled
+                                            ? 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02))'
+                                            : 'rgba(248,248,252,0.6)',
+                                        border: `1.5px solid ${settings.submissionsEnabled ? 'rgba(34,197,94,0.2)' : 'rgba(200,200,220,0.3)'}`,
+                                        cursor: 'pointer', transition: 'all 0.3s ease',
+                                    }}
                                     onClick={() => handleUpdateSettings('submissionsEnabled', !settings.submissionsEnabled)}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 500 }}>Gallery Public</span>
-                                <button
-                                    className={`toggle-switch ${settings.galleryPublic ? 'active' : ''}`}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <div style={{
+                                            width: 32, height: 32, borderRadius: 8,
+                                            background: settings.submissionsEnabled ? 'rgba(34,197,94,0.12)' : 'rgba(150,150,170,0.1)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <Send size={16} color={settings.submissionsEnabled ? '#16a34a' : '#9ca3af'} />
+                                        </div>
+                                        <div style={{
+                                            width: 44, height: 24, borderRadius: 12,
+                                            background: settings.submissionsEnabled ? 'linear-gradient(90deg, #22c55e, #16a34a)' : '#d1d5db',
+                                            padding: 2, transition: 'all 0.3s ease',
+                                        }}>
+                                            <motion.div
+                                                animate={{ x: settings.submissionsEnabled ? 20 : 0 }}
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                style={{ width: 20, height: 20, borderRadius: 10, background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Submissions</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {settings.submissionsEnabled ? '✅ Accepting project submissions' : '⏸️ Submissions paused'}
+                                    </div>
+                                </motion.div>
+
+                                {/* Gallery Toggle */}
+                                <motion.div
+                                    whileHover={{ scale: 1.01 }}
+                                    style={{
+                                        padding: '1.25rem', borderRadius: 16,
+                                        background: settings.galleryPublic
+                                            ? 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.02))'
+                                            : 'rgba(248,248,252,0.6)',
+                                        border: `1.5px solid ${settings.galleryPublic ? 'rgba(99,102,241,0.2)' : 'rgba(200,200,220,0.3)'}`,
+                                        cursor: 'pointer', transition: 'all 0.3s ease',
+                                    }}
                                     onClick={() => handleUpdateSettings('galleryPublic', !settings.galleryPublic)}
-                                />
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <div style={{
+                                            width: 32, height: 32, borderRadius: 8,
+                                            background: settings.galleryPublic ? 'rgba(99,102,241,0.12)' : 'rgba(150,150,170,0.1)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <Image size={16} color={settings.galleryPublic ? '#6366f1' : '#9ca3af'} />
+                                        </div>
+                                        <div style={{
+                                            width: 44, height: 24, borderRadius: 12,
+                                            background: settings.galleryPublic ? 'linear-gradient(90deg, #6366f1, #8b5cf6)' : '#d1d5db',
+                                            padding: 2, transition: 'all 0.3s ease',
+                                        }}>
+                                            <motion.div
+                                                animate={{ x: settings.galleryPublic ? 20 : 0 }}
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                style={{ width: 20, height: 20, borderRadius: 10, background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Gallery</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {settings.galleryPublic ? '👁️ Visible to everyone' : '🔒 Hidden from public'}
+                                    </div>
+                                </motion.div>
                             </div>
-                            <div>
-                                <label style={{ fontWeight: 500, display: 'block', marginBottom: 6 }}>Workshop End Time</label>
+
+                            {/* Timer Card */}
+                            <div style={{
+                                padding: '1.25rem', borderRadius: 16,
+                                background: 'linear-gradient(135deg, rgba(236,72,153,0.04), rgba(249,115,22,0.03))',
+                                border: '1.5px solid rgba(236,72,153,0.15)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                    <div style={{
+                                        width: 32, height: 32, borderRadius: 8,
+                                        background: 'rgba(236,72,153,0.1)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Clock size={16} color="#ec4899" />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Workshop End Time</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Controls the countdown timer on dashboards</div>
+                                    </div>
+                                </div>
                                 <input
                                     type="datetime-local"
                                     className="glow-input"
                                     value={settings.workshopEndTime ? new Date(settings.workshopEndTime).toISOString().slice(0, 16) : ''}
                                     onChange={e => handleUpdateSettings('workshopEndTime', e.target.value)}
-                                    style={{ maxWidth: 300 }}
+                                    style={{ maxWidth: 320, fontSize: '0.9rem' }}
                                 />
                             </div>
-                            <div>
-                                <label style={{ fontWeight: 500, display: 'block', marginBottom: 6 }}>Announcement</label>
+
+                            {/* Announcement Card */}
+                            <div style={{
+                                padding: '1.25rem', borderRadius: 16,
+                                background: 'linear-gradient(135deg, rgba(245,158,11,0.04), rgba(234,179,8,0.02))',
+                                border: '1.5px solid rgba(245,158,11,0.15)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                    <div style={{
+                                        width: 32, height: 32, borderRadius: 8,
+                                        background: 'rgba(245,158,11,0.1)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Sparkles size={16} color="#f59e0b" />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Announcement</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Shown on the landing page to all visitors</div>
+                                    </div>
+                                </div>
                                 <input
                                     className="glow-input"
-                                    placeholder="Workshop announcement..."
+                                    placeholder="Type your workshop announcement here..."
                                     value={settings.announcement || ''}
                                     onChange={e => handleUpdateSettings('announcement', e.target.value)}
+                                    style={{ fontSize: '0.9rem' }}
                                 />
                             </div>
                         </div>
@@ -194,10 +315,17 @@ export default function AdminPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span className="badge">Participant</span>
                                             <button onClick={() => setEditUser({ userId: p.userId, name: p.name })}
+                                                title="Edit name"
                                                 style={{ padding: '6px', borderRadius: 8, background: 'rgba(99,102,241,0.1)', border: 'none', cursor: 'pointer', color: 'var(--accent-blue)' }}>
                                                 <Edit3 size={14} />
                                             </button>
+                                            <button onClick={() => handleResetPassword(p.userId)}
+                                                title="Reset password"
+                                                style={{ padding: '6px', borderRadius: 8, background: 'rgba(234,179,8,0.1)', border: 'none', cursor: 'pointer', color: '#ca8a04' }}>
+                                                <KeyRound size={14} />
+                                            </button>
                                             <button onClick={() => handleDeleteUser(p.userId)}
+                                                title="Delete user"
                                                 style={{ padding: '6px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
                                                 <Trash2 size={14} />
                                             </button>

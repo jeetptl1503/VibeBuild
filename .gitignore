@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# persistent data store (contains passwords)
+/.data/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
