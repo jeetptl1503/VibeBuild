@@ -18,7 +18,7 @@ A modern, animated workshop platform built for hackathon-style AI workshops. Tea
 | 📊 **Team Dashboard** | Countdown timer, progress tracker, project submission with confetti |
 | 🌍 **Project Showcase** | Public grid with domain filters, search, hover animations & student submission form |
 | 🤖 **AI Chatbot** | Floating assistant with OpenAI integration + built-in fallback guides for GitHub & Vercel deployment |
-| 🖼️ **Gallery** | Masonry layout with lightbox, video modal & admin upload/approval system |
+| 🖼️ **Gallery** | Masonry layout with lightbox, video model & admin upload/approval system |
 | 📋 **Attendance** | Admin CRUD with first/second half toggles & CSV export |
 | 📈 **Reports** | Upload & manage event materials (PDFs, images, presentations) with category filtering |
 | 🛠️ **Admin Panel** | Manage teams, toggle submissions, control workshop timer |
@@ -98,25 +98,21 @@ npm start
 
 ## 🔑 Login Credentials
 
-The app comes pre-loaded with dummy data. No database setup needed!
+The app comes with **3 pre-configured admin accounts**. No database setup needed!
 
-| Role | ID | Password |
-|------|-----|----------|
-| **Admin** | `ADMIN001` | `admin2024` |
-| **Teams** | `TEAM001` – `TEAM008` | `vibebuild2024` |
+### Default Admin Accounts
 
-### Sample Teams
+| ID | Name | Temporary Password |
+|----|------|--------------------|
+| `DMP001` | Faculty Coordinator | `temppass2024` |
+| `25EC080` | Student Coordinator 1 | `temppass2024` |
+| `25EC112` | Student Coordinator 2 | `temppass2024` |
 
-| Team | Domain |
-|------|--------|
-| Team AlphaNova | Healthcare AI |
-| Team CodeCatalyst | Agriculture AI |
-| Team NeuralForge | Smart Cities |
-| Team DataVibe | Education Tech |
-| Team PixelPulse | Healthcare AI |
-| Team AI Innovators | Agriculture AI |
-| Team Tech Titans | Smart Cities |
-| Team Quantum Coders | Education Tech |
+> **Note:** On first login, admins are prompted to set a new password. After that, use the newly set password to log in.
+
+### Adding Teams
+
+Teams are **not pre-loaded** — admins create them via the **Admin Panel**. Once created, team members log in with the credentials assigned by the admin.
 
 ---
 
