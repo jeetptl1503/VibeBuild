@@ -13,7 +13,7 @@ export default function AdminPage() {
     const [settings, setSettings] = useState(null);
     const [showAddUser, setShowAddUser] = useState(false);
     const [editUser, setEditUser] = useState(null);
-    const [newUser, setNewUser] = useState({ userId: '', password: '', name: '' });
+    const [newUser, setNewUser] = useState({ userId: '', password: '', name: '', email: '' });
 
     useEffect(() => {
         if (!loading && (!user || user.role !== 'admin')) router.push('/login');
@@ -28,12 +28,16 @@ export default function AdminPage() {
 
     const handleAddUser = async () => {
         if (!newUser.userId || !newUser.password || !newUser.name) return;
-        const res = await authFetch('/api/admin/teams', { method: 'POST', body: JSON.stringify(newUser) });
+        if (newUser.password.length < 8) { alert('Password must be at least 8 characters'); return; }
+        const res = await authFetch('/api/admin/create-user', { method: 'POST', body: JSON.stringify(newUser) });
         if (res.ok) {
             const data = await res.json();
             setParticipants(prev => [...prev, data.participant]);
-            setNewUser({ userId: '', password: '', name: '' });
+            setNewUser({ userId: '', password: '', name: '', email: '' });
             setShowAddUser(false);
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Failed to add participant');
         }
     };
 
@@ -275,8 +279,9 @@ export default function AdminPage() {
                                 <div style={{ padding: '1rem', borderRadius: 14, background: 'rgba(99,102,241,0.03)', border: '1px dashed rgba(99,102,241,0.2)' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
                                         <input className="glow-input" placeholder="User ID" value={newUser.userId} onChange={e => setNewUser(f => ({ ...f, userId: e.target.value.toUpperCase() }))} />
-                                        <input className="glow-input" placeholder="Password" type="password" value={newUser.password} onChange={e => setNewUser(f => ({ ...f, password: e.target.value }))} />
+                                        <input className="glow-input" placeholder="Password (min 8 chars)" type="password" value={newUser.password} onChange={e => setNewUser(f => ({ ...f, password: e.target.value }))} />
                                         <input className="glow-input" placeholder="Full Name" value={newUser.name} onChange={e => setNewUser(f => ({ ...f, name: e.target.value }))} />
+                                        <input className="glow-input" placeholder="Email (optional)" type="email" value={newUser.email} onChange={e => setNewUser(f => ({ ...f, email: e.target.value }))} />
                                     </div>
                                     <div style={{ display: 'flex', gap: 8, marginTop: '0.75rem' }}>
                                         <button className="glow-btn" onClick={handleAddUser} style={{ padding: '8px 20px', fontSize: '0.85rem' }}>

@@ -12,8 +12,8 @@ export async function POST(request) {
 
         const { userId, newPassword } = await request.json();
 
-        if (!userId || !newPassword || newPassword.length < 6) {
-            return NextResponse.json({ error: 'User ID and new password (min 6 chars) are required' }, { status: 400 });
+        if (!userId || !newPassword || newPassword.length < 8) {
+            return NextResponse.json({ error: 'User ID and new password (min 8 chars) are required' }, { status: 400 });
         }
 
         const hashedPassword = await bcryptjs.hash(newPassword, 10);
