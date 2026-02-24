@@ -64,8 +64,8 @@ export default function LoginPage() {
         e.preventDefault();
         setError('');
 
-        if (newPassword.length < 6) {
-            setError('Password must be at least 6 characters');
+        if (newPassword.length < 8) {
+            setError('Password must be at least 8 characters');
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -88,12 +88,21 @@ export default function LoginPage() {
 
             if (!res.ok) throw new Error(data.error);
 
-            // Re-login with new password
-            const user = await login(userId, newPassword);
-            if (user.role === 'admin') {
-                router.push('/admin');
+            // Re-login with new password to get a fresh token
+            const loginRes = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, password: newPassword }),
+            });
+            const loginData = await loginRes.json();
+            if (!loginRes.ok) throw new Error(loginData.error || 'Re-login failed');
+
+            localStorage.setItem('vibebuild_token', loginData.token);
+            // Force a full page reload to pick up the new token and state
+            if (loginData.user?.role === 'admin') {
+                window.location.href = '/admin';
             } else {
-                router.push('/dashboard');
+                window.location.href = '/dashboard';
             }
         } catch (err) {
             setError(err.message || 'Failed to set password');
@@ -195,7 +204,7 @@ export default function LoginPage() {
                                 <input
                                     className="glow-input"
                                     type={showNewPassword ? 'text' : 'password'}
-                                    placeholder="At least 6 characters"
+                                    placeholder="At least 8 characters"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     style={{ paddingRight: 44 }}
