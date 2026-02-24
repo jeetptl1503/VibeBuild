@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { GlassCard, ScrollReveal } from '@/components/UIComponents';
-import { Image as ImageIcon, Video, Upload, Trash2, Download, Eye, EyeOff, X, CheckCircle2, Link2, Camera } from 'lucide-react';
+import { Image as ImageIcon, Video, Upload, Trash2, Download, Eye, EyeOff, X, CheckCircle2, Camera, FileUp } from 'lucide-react';
 
 export default function GalleryPage() {
     const { user, authFetch } = useAuth();
@@ -13,13 +13,14 @@ export default function GalleryPage() {
     const [uploading, setUploading] = useState(false);
     const [toast, setToast] = useState('');
     const [lightbox, setLightbox] = useState(null);
-    const [form, setForm] = useState({ filename: '', url: '', type: 'image', caption: '' });
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [caption, setCaption] = useState('');
+    const [dragOver, setDragOver] = useState(false);
+    const fileInputRef = useRef(null);
 
     const isAdmin = user?.role === 'admin';
 
-    useEffect(() => {
-        fetchGallery();
-    }, [user]);
+    useEffect(() => { fetchGallery(); }, [user]);
 
     async function fetchGallery() {
         setLoading(true);
@@ -32,28 +33,68 @@ export default function GalleryPage() {
                 const data = await res.json();
                 setItems(data.items || []);
             }
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
+    }
+
+    function handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        addFiles(files);
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        setDragOver(false);
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+        addFiles(files);
+    }
+
+    function addFiles(files) {
+        const valid = files.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+        if (valid.length === 0) return;
+        setSelectedFiles(prev => [...prev, ...valid]);
+    }
+
+    function removeFile(index) {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     }
 
     async function handleUpload(e) {
         e.preventDefault();
-        if (!form.filename || !form.url) return;
+        if (selectedFiles.length === 0) return;
         setUploading(true);
         try {
-            const res = await authFetch('/api/gallery', { method: 'POST', body: JSON.stringify(form) });
-            if (res.ok) {
-                const data = await res.json();
-                setItems(prev => [data.item, ...prev]);
-                setForm({ filename: '', url: '', type: 'image', caption: '' });
-                setShowUpload(false);
-                setToast('Item uploaded!');
-                setTimeout(() => setToast(''), 3000);
+            for (const file of selectedFiles) {
+                const base64 = await fileToBase64(file);
+                const type = file.type.startsWith('video/') ? 'video' : 'image';
+                const res = await authFetch('/api/gallery', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        filename: file.name,
+                        url: base64,
+                        type,
+                        caption: caption || '',
+                    }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setItems(prev => [data.item, ...prev]);
+                }
             }
-        } finally {
-            setUploading(false);
-        }
+            setSelectedFiles([]);
+            setCaption('');
+            setShowUpload(false);
+            setToast(`${selectedFiles.length} item(s) uploaded!`);
+            setTimeout(() => setToast(''), 3000);
+        } finally { setUploading(false); }
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
 
     async function handleToggleVisibility(id) {
@@ -105,33 +146,71 @@ export default function GalleryPage() {
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
                         <GlassCard hover={false} style={{ marginBottom: '1.5rem' }}>
                             <h3 style={{ fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Upload size={18} color="#6366f1" /> Upload Photo or Video
+                                <Upload size={18} color="#6366f1" /> Upload Photos or Videos
                             </h3>
                             <form onSubmit={handleUpload}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>File Name *</label>
-                                        <input className="glow-input" placeholder="e.g. workshop-day-1.jpg" value={form.filename} onChange={e => setForm(f => ({ ...f, filename: e.target.value }))} required />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Image/Video URL *</label>
-                                        <input className="glow-input" placeholder="https://..." value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} required type="url" />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Type</label>
-                                        <select className="glow-input" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                                            <option value="image">Image</option>
-                                            <option value="video">Video</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Caption</label>
-                                        <input className="glow-input" placeholder="Optional caption..." value={form.caption} onChange={e => setForm(f => ({ ...f, caption: e.target.value }))} />
-                                    </div>
+                                {/* Drop Zone */}
+                                <div
+                                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                                    onDragLeave={() => setDragOver(false)}
+                                    onDrop={handleDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    style={{
+                                        border: `2px dashed ${dragOver ? '#6366f1' : 'rgba(99,102,241,0.25)'}`,
+                                        borderRadius: 16, padding: '2.5rem', textAlign: 'center',
+                                        cursor: 'pointer', transition: 'all 0.3s ease',
+                                        background: dragOver ? 'rgba(99,102,241,0.05)' : 'rgba(248,248,252,0.5)',
+                                    }}>
+                                    <FileUp size={40} color={dragOver ? '#6366f1' : '#a5b4fc'} style={{ marginBottom: 12 }} />
+                                    <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0, color: 'var(--text-primary)' }}>
+                                        {dragOver ? 'Drop files here!' : 'Click to browse or drag & drop'}
+                                    </p>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '6px 0 0' }}>
+                                        Images (JPG, PNG, GIF, WebP) and Videos (MP4, WebM)
+                                    </p>
+                                    <input ref={fileInputRef} type="file" multiple accept="image/*,video/*"
+                                        onChange={handleFileSelect} style={{ display: 'none' }} />
                                 </div>
-                                <motion.button type="submit" className="glow-btn" disabled={uploading} whileTap={{ scale: 0.98 }}
-                                    style={{ marginTop: '1rem', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <Upload size={16} /> {uploading ? 'Uploading...' : 'Upload'}
+
+                                {/* Selected Files Preview */}
+                                {selectedFiles.length > 0 && (
+                                    <div style={{ marginTop: '1rem' }}>
+                                        <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                                            {selectedFiles.length} file(s) selected
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                            {selectedFiles.map((file, i) => (
+                                                <div key={i} style={{
+                                                    display: 'flex', alignItems: 'center', gap: 8,
+                                                    padding: '6px 12px', borderRadius: 10,
+                                                    background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                                                    fontSize: '0.82rem',
+                                                }}>
+                                                    {file.type.startsWith('video/') ? <Video size={14} color="#6366f1" /> : <ImageIcon size={14} color="#6366f1" />}
+                                                    <span style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#dc2626' }}>
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Caption */}
+                                <div style={{ marginTop: '1rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>
+                                        Caption (optional)
+                                    </label>
+                                    <input className="glow-input" placeholder="Optional caption for all uploaded files..."
+                                        value={caption} onChange={e => setCaption(e.target.value)} />
+                                </div>
+
+                                <motion.button type="submit" className="glow-btn" disabled={uploading || selectedFiles.length === 0} whileTap={{ scale: 0.98 }}
+                                    style={{ marginTop: '1rem', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8, opacity: selectedFiles.length === 0 ? 0.5 : 1 }}>
+                                    <Upload size={16} /> {uploading ? `Uploading (${selectedFiles.length})...` : `Upload ${selectedFiles.length} File(s)`}
                                 </motion.button>
                             </form>
                         </GlassCard>
@@ -154,7 +233,6 @@ export default function GalleryPage() {
                     {items.map((item, i) => (
                         <ScrollReveal key={item._id || i} delay={i * 0.04}>
                             <GlassCard style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
-                                {/* Visibility badge (admin) */}
                                 {isAdmin && (
                                     <div style={{
                                         position: 'absolute', top: 10, left: 10, zIndex: 2,
@@ -165,26 +243,19 @@ export default function GalleryPage() {
                                         {item.publicVisible ? 'Visible' : 'Hidden'}
                                     </div>
                                 )}
-
-                                {/* Media */}
                                 {item.type === 'video' ? (
                                     <video src={item.url} controls style={{ width: '100%', height: 200, objectFit: 'cover' }} />
                                 ) : (
-                                    <img
-                                        src={item.url} alt={item.caption || item.filename}
+                                    <img src={item.url} alt={item.caption || item.filename}
                                         style={{ width: '100%', height: 200, objectFit: 'cover', cursor: 'pointer' }}
-                                        onClick={() => setLightbox(item)}
-                                    />
+                                        onClick={() => setLightbox(item)} />
                                 )}
-
                                 <div style={{ padding: '0.75rem 1rem' }}>
                                     <p style={{ fontWeight: 600, fontSize: '0.88rem', margin: 0 }}>{item.caption || item.filename}</p>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '2px 0' }}>
                                         {new Date(item.createdAt).toLocaleDateString()}
                                     </p>
-
                                     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                                        {/* Download for participants */}
                                         <a href={item.url} download={item.filename} target="_blank" rel="noopener noreferrer"
                                             style={{
                                                 padding: '6px 12px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 500,
@@ -193,7 +264,6 @@ export default function GalleryPage() {
                                             }}>
                                             <Download size={12} /> Download
                                         </a>
-                                        {/* Admin controls */}
                                         {isAdmin && (
                                             <>
                                                 <button onClick={() => handleToggleVisibility(item._id)}

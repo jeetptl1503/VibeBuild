@@ -1,21 +1,26 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard, ScrollReveal } from '@/components/UIComponents';
-import { Upload, FileText, FileImage, Presentation, File, Trash2, Download, FolderUp, Tag, Plus, X, Filter, CheckCircle2 } from 'lucide-react';
+import { Upload, FileText, FileImage, Presentation, File, Trash2, Download, FolderUp, X, CheckCircle2, FileUp } from 'lucide-react';
 
-const FILE_TYPES = ['PDF', 'JPG', 'PNG', 'PPTX', 'DOCX', 'XLSX', 'Other'];
 const CATEGORIES = ['Attendance', 'Presentation', 'Report', 'Photos', 'Other'];
 
 function getFileIcon(type) {
     switch (type?.toUpperCase()) {
         case 'PDF': return <FileText size={20} color="#ef4444" />;
-        case 'JPG': case 'PNG': return <FileImage size={20} color="#f59e0b" />;
-        case 'PPTX': return <Presentation size={20} color="#ec4899" />;
+        case 'JPG': case 'PNG': case 'JPEG': case 'GIF': case 'WEBP': return <FileImage size={20} color="#f59e0b" />;
+        case 'PPTX': case 'PPT': return <Presentation size={20} color="#ec4899" />;
         default: return <File size={20} color="#6366f1" />;
     }
+}
+
+function getFileType(filename) {
+    const ext = filename.split('.').pop()?.toUpperCase() || 'Other';
+    const known = ['PDF', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'PPTX', 'PPT', 'DOCX', 'DOC', 'XLSX', 'XLS', 'MP4', 'WEBM'];
+    return known.includes(ext) ? ext : 'Other';
 }
 
 export default function ReportsPage() {
@@ -26,9 +31,11 @@ export default function ReportsPage() {
     const [filterCategory, setFilterCategory] = useState('All');
     const [uploading, setUploading] = useState(false);
     const [uploadSuccess, setUploadSuccess] = useState(false);
-    const [form, setForm] = useState({
-        fileName: '', fileUrl: '', fileType: 'PDF', category: 'Report', description: '',
-    });
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [category, setCategory] = useState('Report');
+    const [description, setDescription] = useState('');
+    const [dragOver, setDragOver] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         if (!loading && (!user || user.role !== 'admin')) router.push('/login');
@@ -46,23 +53,54 @@ export default function ReportsPage() {
         }
     }
 
+    function handleFileSelect(e) {
+        const file = e.target.files?.[0];
+        if (file) setSelectedFile(file);
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        setDragOver(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) setSelectedFile(file);
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
     async function handleUpload(e) {
         e.preventDefault();
-        if (!form.fileName || !form.fileUrl) return;
+        if (!selectedFile) return;
         setUploading(true);
         try {
-            const res = await authFetch('/api/reports', { method: 'POST', body: JSON.stringify(form) });
+            const base64 = await fileToBase64(selectedFile);
+            const res = await authFetch('/api/reports', {
+                method: 'POST',
+                body: JSON.stringify({
+                    fileName: selectedFile.name,
+                    fileUrl: base64,
+                    fileType: getFileType(selectedFile.name),
+                    category,
+                    description,
+                }),
+            });
             if (res.ok) {
                 const data = await res.json();
                 setReports(prev => [data.report, ...prev]);
-                setForm({ fileName: '', fileUrl: '', fileType: 'PDF', category: 'Report', description: '' });
+                setSelectedFile(null);
+                setCategory('Report');
+                setDescription('');
                 setUploadSuccess(true);
                 setTimeout(() => setUploadSuccess(false), 3000);
                 setShowUpload(false);
             }
-        } finally {
-            setUploading(false);
-        }
+        } finally { setUploading(false); }
     }
 
     async function handleDelete(id) {
@@ -131,34 +169,65 @@ export default function ReportsPage() {
                                 <Upload size={18} color="#6366f1" /> Upload Material
                             </h3>
                             <form onSubmit={handleUpload}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>File Name *</label>
-                                        <input className="glow-input" placeholder="e.g. Attendance Sheet Day 1" value={form.fileName} onChange={e => setForm(f => ({ ...f, fileName: e.target.value }))} required />
+                                {/* Drop Zone */}
+                                <div
+                                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                                    onDragLeave={() => setDragOver(false)}
+                                    onDrop={handleDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    style={{
+                                        border: `2px dashed ${dragOver ? '#6366f1' : 'rgba(99,102,241,0.25)'}`,
+                                        borderRadius: 16, padding: '2.5rem', textAlign: 'center',
+                                        cursor: 'pointer', transition: 'all 0.3s ease',
+                                        background: dragOver ? 'rgba(99,102,241,0.05)' : 'rgba(248,248,252,0.5)',
+                                    }}>
+                                    <FileUp size={40} color={dragOver ? '#6366f1' : '#a5b4fc'} style={{ marginBottom: 12 }} />
+                                    <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0, color: 'var(--text-primary)' }}>
+                                        {dragOver ? 'Drop file here!' : 'Click to browse or drag & drop'}
+                                    </p>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '6px 0 0' }}>
+                                        PDF, Images, PowerPoint, Word, Excel, and more
+                                    </p>
+                                    <input ref={fileInputRef} type="file" onChange={handleFileSelect} style={{ display: 'none' }} />
+                                </div>
+
+                                {/* Selected File */}
+                                {selectedFile && (
+                                    <div style={{
+                                        marginTop: '1rem', display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: '10px 14px', borderRadius: 12,
+                                        background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                                    }}>
+                                        {getFileIcon(getFileType(selectedFile.name))}
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{selectedFile.name}</div>
+                                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                                {getFileType(selectedFile.name)} · {(selectedFile.size / 1024 / 1024).toFixed(1)} MB
+                                            </div>
+                                        </div>
+                                        <button type="button" onClick={() => setSelectedFile(null)}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }}>
+                                            <X size={16} />
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>File URL *</label>
-                                        <input className="glow-input" placeholder="https://drive.google.com/..." value={form.fileUrl} onChange={e => setForm(f => ({ ...f, fileUrl: e.target.value }))} required type="url" />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>File Type</label>
-                                        <select className="glow-input" value={form.fileType} onChange={e => setForm(f => ({ ...f, fileType: e.target.value }))}>
-                                            {FILE_TYPES.map(t => <option key={t}>{t}</option>)}
-                                        </select>
-                                    </div>
+                                )}
+
+                                {/* Category & Description */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginTop: '1rem' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Category</label>
-                                        <select className="glow-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                                        <select className="glow-input" value={category} onChange={e => setCategory(e.target.value)}>
                                             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                                         </select>
                                     </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Description</label>
+                                        <input className="glow-input" placeholder="Optional notes..." value={description} onChange={e => setDescription(e.target.value)} />
+                                    </div>
                                 </div>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Description</label>
-                                    <input className="glow-input" placeholder="Optional notes..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-                                </div>
-                                <motion.button type="submit" className="glow-btn" disabled={uploading} whileTap={{ scale: 0.98 }}
-                                    style={{ marginTop: '1rem', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8 }}>
+
+                                <motion.button type="submit" className="glow-btn" disabled={uploading || !selectedFile} whileTap={{ scale: 0.98 }}
+                                    style={{ marginTop: '1rem', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8, opacity: !selectedFile ? 0.5 : 1 }}>
                                     <Upload size={16} /> {uploading ? 'Uploading...' : 'Upload'}
                                 </motion.button>
                             </form>
@@ -197,7 +266,7 @@ export default function ReportsPage() {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
-                                    <a href={report.fileUrl} target="_blank" rel="noopener noreferrer"
+                                    <a href={report.fileUrl} download={report.fileName} target="_blank" rel="noopener noreferrer"
                                         style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(99,102,241,0.1)', border: 'none', cursor: 'pointer', color: 'var(--accent-blue)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, fontSize: '0.85rem' }}>
                                         <Download size={14} /> Open
                                     </a>

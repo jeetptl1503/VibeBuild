@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { tryDb } from '@/lib/tryDb';
 
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
+
 export async function GET(request) {
     try {
         const user = await authenticateRequest(request);
