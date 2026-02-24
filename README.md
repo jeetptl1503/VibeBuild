@@ -111,6 +111,8 @@ npm start
 
 > **Note:** Login credentials are managed privately by workshop organizers and are not published here.
 
+> **Note:** Without MongoDB, data is stored in-memory and persists across hot reloads during development. A full server restart will reset all data to defaults.
+
 ---
 
 ## 📁 Project Structure
