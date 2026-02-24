@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
+import { tryDb } from '@/lib/tryDb';
 
 export async function GET(request) {
     try {
@@ -8,13 +9,24 @@ export async function GET(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (user.role === 'admin') {
-            const { getCertificates } = await import('@/lib/memoryStore');
-            return NextResponse.json({ certificates: getCertificates() });
+        const dbAvailable = await tryDb();
+        if (dbAvailable) {
+            const Certificate = (await import('@/lib/models/Certificate')).default;
+            if (user.role === 'admin') {
+                const certificates = await Certificate.find().sort({ createdAt: -1 });
+                return NextResponse.json({ certificates });
+            } else {
+                const certificates = await Certificate.find({ studentId: user.userId }).sort({ createdAt: -1 });
+                return NextResponse.json({ certificates });
+            }
         } else {
-            // Participants see only their own certificates
-            const { getCertificateByStudentId } = await import('@/lib/memoryStore');
-            return NextResponse.json({ certificates: getCertificateByStudentId(user.userId) });
+            if (user.role === 'admin') {
+                const { getCertificates } = await import('@/lib/memoryStore');
+                return NextResponse.json({ certificates: getCertificates() });
+            } else {
+                const { getCertificateByStudentId } = await import('@/lib/memoryStore');
+                return NextResponse.json({ certificates: getCertificateByStudentId(user.userId) });
+            }
         }
     } catch (error) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -35,16 +47,28 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Student name and ID are required' }, { status: 400 });
         }
 
-        const { addCertificate } = await import('@/lib/memoryStore');
-        const certificate = addCertificate({
-            studentName,
-            studentId: studentId.toUpperCase(),
-            certificateUrl: certificateUrl || '',
-            certificateType: certificateType || 'participation',
-            issuedBy: user.userId,
-        });
-
-        return NextResponse.json({ certificate }, { status: 201 });
+        const dbAvailable = await tryDb();
+        if (dbAvailable) {
+            const Certificate = (await import('@/lib/models/Certificate')).default;
+            const certificate = await Certificate.create({
+                studentName,
+                studentId: studentId.toUpperCase(),
+                certificateUrl: certificateUrl || '',
+                certificateType: certificateType || 'participation',
+                issuedBy: user.userId,
+            });
+            return NextResponse.json({ certificate }, { status: 201 });
+        } else {
+            const { addCertificate } = await import('@/lib/memoryStore');
+            const certificate = addCertificate({
+                studentName,
+                studentId: studentId.toUpperCase(),
+                certificateUrl: certificateUrl || '',
+                certificateType: certificateType || 'participation',
+                issuedBy: user.userId,
+            });
+            return NextResponse.json({ certificate }, { status: 201 });
+        }
     } catch (error) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

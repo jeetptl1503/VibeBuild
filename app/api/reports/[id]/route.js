@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
+import { tryDb } from '@/lib/tryDb';
 
 export async function DELETE(request, { params }) {
     try {
@@ -9,8 +10,15 @@ export async function DELETE(request, { params }) {
         }
 
         const { id } = await params;
-        const { deleteReport } = await import('@/lib/memoryStore');
-        deleteReport(id);
+
+        const dbAvailable = await tryDb();
+        if (dbAvailable) {
+            const Report = (await import('@/lib/models/Report')).default;
+            await Report.findByIdAndDelete(id);
+        } else {
+            const { deleteReport } = await import('@/lib/memoryStore');
+            deleteReport(id);
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

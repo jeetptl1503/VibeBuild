@@ -67,15 +67,26 @@ export async function PATCH(request) {
             return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
         }
 
-        const { toggleGalleryVisibility } = await import('@/lib/memoryStore');
-        const item = toggleGalleryVisibility(id);
-
-        if (!item) {
-            return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+        const dbAvailable = await tryDb();
+        if (dbAvailable) {
+            const Gallery = (await import('@/lib/models/Gallery')).default;
+            const item = await Gallery.findById(id);
+            if (!item) {
+                return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+            }
+            item.publicVisible = !item.publicVisible;
+            await item.save();
+            return NextResponse.json({ item });
+        } else {
+            const { toggleGalleryVisibility } = await import('@/lib/memoryStore');
+            const item = toggleGalleryVisibility(id);
+            if (!item) {
+                return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+            }
+            return NextResponse.json({ item });
         }
-
-        return NextResponse.json({ item });
     } catch (error) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
