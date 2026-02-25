@@ -9,6 +9,11 @@ import { Shield, Users, Settings, Clock, Plus, Edit3, Trash2, Save, X, Image, Ba
 export default function AdminPage() {
     const { user, loading, authFetch } = useAuth();
     const router = useRouter();
+    const [participants, setParticipants] = useState([]);
+    const [settings, setSettings] = useState(null);
+    const [showAddUser, setShowAddUser] = useState(false);
+    const [editUser, setEditUser] = useState(null);
+    const [newUser, setNewUser] = useState({ userId: '', password: '', name: '', email: '' });
     const [projects, setProjects] = useState([]);
     const [activeTab, setActiveTab] = useState('participants'); // 'participants' or 'projects'
     const [reviewingProject, setReviewingProject] = useState(null);
