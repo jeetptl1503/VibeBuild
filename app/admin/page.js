@@ -9,10 +9,11 @@ import { Shield, Users, Settings, Clock, Plus, Edit3, Trash2, Save, X, Image, Ba
 export default function AdminPage() {
     const { user, loading, authFetch } = useAuth();
     const router = useRouter();
-    const [projects, setProjects] = useState([]);
-    const [activeTab, setActiveTab] = useState('participants'); // 'participants' or 'projects'
-    const [reviewingProject, setReviewingProject] = useState(null);
-    const [reviewForm, setReviewForm] = useState({ rating: 0, score: 0, adminFeedback: '' });
+    const [participants, setParticipants] = useState([]);
+    const [settings, setSettings] = useState(null);
+    const [showAddUser, setShowAddUser] = useState(false);
+    const [editUser, setEditUser] = useState(null);
+    const [newUser, setNewUser] = useState({ userId: '', password: '', name: '', email: '' });
 
     useEffect(() => {
         if (!loading && (!user || user.role !== 'admin')) router.push('/login');
@@ -21,7 +22,6 @@ export default function AdminPage() {
     useEffect(() => {
         if (user?.role === 'admin') {
             authFetch('/api/admin/teams').then(r => r.json()).then(d => setParticipants(d.participants || []));
-            authFetch('/api/projects').then(r => r.json()).then(d => setProjects(d.projects || []));
             fetch('/api/admin/settings').then(r => r.json()).then(d => setSettings(d.settings));
         }
     }, [user]);
@@ -80,36 +80,13 @@ export default function AdminPage() {
         }
     };
 
-    const handleReviewSubmit = async () => {
-        if (!reviewingProject) return;
-        const res = await authFetch(`/api/projects/${reviewingProject._id || reviewingProject.userId}/review`, {
-            method: 'POST',
-            body: JSON.stringify(reviewForm)
-        });
-        if (res.ok) {
-            const data = await res.json();
-            setProjects(prev => prev.map(p => (p._id === data.project._id || p.userId === data.project.userId) ? data.project : p));
-            setReviewingProject(null);
-            setReviewForm({ rating: 0, score: 0, adminFeedback: '' });
-            alert('Review submitted successfully!');
-        } else {
-            alert('Failed to submit review');
-        }
-    };
-
-    const handleDeleteProject = async (id) => {
-        if (!confirm('Permanently delete this project?')) return;
-        const res = await authFetch(`/api/projects?id=${id}`, { method: 'DELETE' });
-        if (res.ok) setProjects(prev => prev.filter(p => p._id !== id && p.userId !== id));
-    };
-
     if (loading || !user || user.role !== 'admin') return null;
 
     return (
         <div className="page-container">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <h1 className="section-title">🚀 Command Center</h1>
-                <p className="section-subtitle">Manage workshops, projects, and neural grids</p>
+                <p className="section-subtitle">Manage workshops, participants, and configurations</p>
             </motion.div>
 
             {/* Quick Links */}
@@ -130,171 +107,246 @@ export default function AdminPage() {
                 </div>
             </ScrollReveal>
 
-            {/* Settings & Tabs Container */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '2rem', alignItems: 'start' }}>
-                <div style={{ display: 'grid', gap: '2rem' }}>
-                    {/* Settings */}
-                    <ScrollReveal delay={0.1}>
-                        <GlassCard hover={false}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <Settings size={20} color="#6366f1" /> System Config
-                            </h2>
-                            {settings && (
-                                <div style={{ display: 'grid', gap: '1rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                        <button onClick={() => handleUpdateSettings('submissionsEnabled', !settings.submissionsEnabled)}
-                                            style={{
-                                                padding: '12px', borderRadius: 14, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
-                                                background: settings.submissionsEnabled ? 'rgba(34,197,94,0.1)' : '#f3f4f6', color: settings.submissionsEnabled ? '#16a34a' : '#64748b'
-                                            }}>
-                                            {settings.submissionsEnabled ? 'Accepting Projects' : 'Projects Paused'}
-                                        </button>
-                                        <button onClick={() => handleUpdateSettings('galleryPublic', !settings.galleryPublic)}
-                                            style={{
-                                                padding: '12px', borderRadius: 14, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
-                                                background: settings.galleryPublic ? 'rgba(99,102,241,0.1)' : '#f3f4f6', color: settings.galleryPublic ? '#6366f1' : '#64748b'
-                                            }}>
-                                            {settings.galleryPublic ? 'Gallery Visible' : 'Gallery Hidden'}
-                                        </button>
+            {/* Settings */}
+            <ScrollReveal delay={0.1}>
+                <GlassCard hover={false} style={{ marginBottom: '2rem' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Settings size={18} color="white" />
+                        </div>
+                        Workshop Settings
+                    </h2>
+                    {settings && (
+                        <div style={{ display: 'grid', gap: '1rem' }}>
+                            {/* Toggle Cards Row */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                {/* Submissions Toggle */}
+                                <motion.div
+                                    whileHover={{ scale: 1.01 }}
+                                    style={{
+                                        padding: '1.25rem', borderRadius: 16,
+                                        background: settings.submissionsEnabled
+                                            ? 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02))'
+                                            : 'rgba(248,248,252,0.6)',
+                                        border: `1.5px solid ${settings.submissionsEnabled ? 'rgba(34,197,94,0.2)' : 'rgba(200,200,220,0.3)'}`,
+                                        cursor: 'pointer', transition: 'all 0.3s ease',
+                                    }}
+                                    onClick={() => handleUpdateSettings('submissionsEnabled', !settings.submissionsEnabled)}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <div style={{
+                                            width: 32, height: 32, borderRadius: 8,
+                                            background: settings.submissionsEnabled ? 'rgba(34,197,94,0.12)' : 'rgba(150,150,170,0.1)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <Send size={16} color={settings.submissionsEnabled ? '#16a34a' : '#9ca3af'} />
+                                        </div>
+                                        <div style={{
+                                            width: 44, height: 24, borderRadius: 12,
+                                            background: settings.submissionsEnabled ? 'linear-gradient(90deg, #22c55e, #16a34a)' : '#d1d5db',
+                                            padding: 2, transition: 'all 0.3s ease',
+                                        }}>
+                                            <motion.div
+                                                animate={{ x: settings.submissionsEnabled ? 20 : 0 }}
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                style={{ width: 20, height: 20, borderRadius: 10, background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
+                                            />
+                                        </div>
                                     </div>
-                                    <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 16 }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Workshop End Time</label>
-                                        <input type="datetime-local" className="glow-input" value={settings.workshopEndTime ? new Date(settings.workshopEndTime).toISOString().slice(0, 16) : ''}
-                                            onChange={e => handleUpdateSettings('workshopEndTime', e.target.value)} style={{ fontSize: '0.85rem' }} />
+                                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Submissions</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {settings.submissionsEnabled ? '✅ Accepting project submissions' : '⏸️ Submissions paused'}
                                     </div>
-                                </div>
-                            )}
-                        </GlassCard>
-                    </ScrollReveal>
-                </div>
+                                </motion.div>
 
-                <div style={{ display: 'grid', gap: '1.5rem' }}>
-                    {/* Tabs */}
-                    <div style={{ display: 'flex', gap: 12, padding: 6, background: 'rgba(0,0,0,0.04)', borderRadius: 16, width: 'fit-content' }}>
-                        <button onClick={() => setActiveTab('participants')} style={{
-                            padding: '8px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700,
-                            background: activeTab === 'participants' ? 'white' : 'transparent', color: activeTab === 'participants' ? 'var(--accent-blue)' : 'var(--text-muted)',
-                            boxShadow: activeTab === 'participants' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s'
-                        }}>Participants</button>
-                        <button onClick={() => setActiveTab('projects')} style={{
-                            padding: '8px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700,
-                            background: activeTab === 'projects' ? 'white' : 'transparent', color: activeTab === 'projects' ? 'var(--accent-blue)' : 'var(--text-muted)',
-                            boxShadow: activeTab === 'projects' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s'
-                        }}>Projects Review</button>
-                    </div>
-
-                    <ScrollReveal delay={0.2}>
-                        <GlassCard hover={false} style={{ minHeight: 400 }}>
-                            {activeTab === 'participants' ? (
-                                <>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Participant Registry</h2>
-                                        <button className="glow-btn" onClick={() => setShowAddUser(!showAddUser)} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>+ New Nexus ID</button>
+                                {/* Gallery Toggle */}
+                                <motion.div
+                                    whileHover={{ scale: 1.01 }}
+                                    style={{
+                                        padding: '1.25rem', borderRadius: 16,
+                                        background: settings.galleryPublic
+                                            ? 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.02))'
+                                            : 'rgba(248,248,252,0.6)',
+                                        border: `1.5px solid ${settings.galleryPublic ? 'rgba(99,102,241,0.2)' : 'rgba(200,200,220,0.3)'}`,
+                                        cursor: 'pointer', transition: 'all 0.3s ease',
+                                    }}
+                                    onClick={() => handleUpdateSettings('galleryPublic', !settings.galleryPublic)}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <div style={{
+                                            width: 32, height: 32, borderRadius: 8,
+                                            background: settings.galleryPublic ? 'rgba(99,102,241,0.12)' : 'rgba(150,150,170,0.1)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <Image size={16} color={settings.galleryPublic ? '#6366f1' : '#9ca3af'} />
+                                        </div>
+                                        <div style={{
+                                            width: 44, height: 24, borderRadius: 12,
+                                            background: settings.galleryPublic ? 'linear-gradient(90deg, #6366f1, #8b5cf6)' : '#d1d5db',
+                                            padding: 2, transition: 'all 0.3s ease',
+                                        }}>
+                                            <motion.div
+                                                animate={{ x: settings.galleryPublic ? 20 : 0 }}
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                style={{ width: 20, height: 20, borderRadius: 10, background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
+                                            />
+                                        </div>
                                     </div>
-
-                                    {showAddUser && (
-                                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: '1.5rem', padding: '1.25rem', borderRadius: 20, border: '1.5px dashed var(--border-glass)', background: 'rgba(99,102,241,0.02)' }}>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                                                <input className="glow-input" placeholder="User ID" value={newUser.userId} onChange={e => setNewUser(f => ({ ...f, userId: e.target.value.toUpperCase() }))} />
-                                                <input className="glow-input" placeholder="Neural Path (Password)" type="password" value={newUser.password} onChange={e => setNewUser(f => ({ ...f, password: e.target.value }))} />
-                                                <input className="glow-input" placeholder="Full Identity Name" value={newUser.name} onChange={e => setNewUser(f => ({ ...f, name: e.target.value }))} />
-                                            </div>
-                                            <button className="glow-btn" onClick={handleAddUser} style={{ padding: '10px 24px' }}>Authorize Identity</button>
-                                        </motion.div>
-                                    )}
-
-                                    <div style={{ display: 'grid', gap: '0.75rem' }}>
-                                        {participants.map(p => (
-                                            <div key={p.userId} style={{ padding: '1.25rem', borderRadius: 20, background: 'white', border: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div>
-                                                    <span style={{ fontWeight: 800, color: 'var(--accent-blue)', display: 'block', fontSize: '0.8rem' }}>{p.userId}</span>
-                                                    <span style={{ fontWeight: 700, fontSize: '1rem' }}>{p.name}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: 8 }}>
-                                                    <button onClick={() => handleResetPassword(p.userId)} style={{ padding: 10, borderRadius: 12, background: 'rgba(234,179,8,0.05)', color: '#ca8a04', border: 'none', cursor: 'pointer' }}><KeyRound size={16} /></button>
-                                                    <button onClick={() => handleDeleteUser(p.userId)} style={{ padding: 10, borderRadius: 12, background: 'rgba(239,68,68,0.05)', color: '#ef4444', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Gallery</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {settings.galleryPublic ? '👁️ Visible to everyone' : '🔒 Hidden from public'}
                                     </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Neural Grid Audits</h2>
-                                        <div className="badge">{projects.length} ACTIVE MISSIONS</div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gap: '1rem' }}>
-                                        {projects.map(p => (
-                                            <motion.div key={p.userId} layout style={{ padding: '1.5rem', borderRadius: 24, background: 'rgba(0,0,0,0.01)', border: '1.5px solid var(--border-glass)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                                    <div>
-                                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>{p.domain} • {p.teamName || 'NO TEAM'}</div>
-                                                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>{p.title}</h3>
-                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>by {p.userName} ({p.userId})</div>
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: 8 }}>
-                                                        <button onClick={() => { setReviewingProject(p); setReviewForm({ rating: p.rating || 0, score: p.score || 0, adminFeedback: p.adminFeedback || '' }); }}
-                                                            className="glow-btn" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Audit Mission</button>
-                                                        <button onClick={() => handleDeleteProject(p._id || p.userId)} style={{ padding: 10, borderRadius: 12, background: 'rgba(239,68,68,0.05)', color: '#ef4444', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
-                                                    </div>
-                                                </div>
-
-                                                {(p.rating > 0 || p.score > 0) && (
-                                                    <div style={{ display: 'flex', gap: 16, marginTop: '1rem', pt: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 800, color: '#6366f1' }}>
-                                                            <Award size={16} /> RATING: {p.rating}/5
-                                                        </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 800, color: '#a855f7' }}>
-                                                            <BarChart3 size={16} /> SCORE: {p.score}%
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </motion.div>
-                                        ))}
-                                        {projects.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No neural missions deployed on the grid.</div>}
-                                    </div>
-                                </>
-                            )}
-                        </GlassCard>
-                    </ScrollReveal>
-                </div>
-            </div>
-
-            {/* Review Modal */}
-            <AnimatePresence>
-                {reviewingProject && (
-                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                            style={{ background: 'white', padding: '2.5rem', borderRadius: 32, width: '100%', maxWidth: 500, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>Neural Audit: {reviewingProject.title}</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>Assess the technical problem statement and domain integration.</p>
-
-                            <div style={{ display: 'grid', gap: '1.5rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: 8 }}>Expert Rating (1.0 - 5.0)</label>
-                                    <input type="number" step="0.1" min="0" max="5" className="glow-input" value={reviewForm.rating} onChange={e => setReviewForm(f => ({ ...f, rating: parseFloat(e.target.value) }))} />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: 8 }}>Integrity Score (0 - 100%)</label>
-                                    <input type="number" min="0" max="100" className="glow-input" value={reviewForm.score} onChange={e => setReviewForm(f => ({ ...f, score: parseInt(e.target.value) }))} />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: 8 }}>Neural Feedback (Brief)</label>
-                                    <textarea className="glow-textarea" style={{ minHeight: 100 }} placeholder="Technical assessment..." value={reviewForm.adminFeedback} onChange={e => setReviewForm(f => ({ ...f, adminFeedback: e.target.value }))} />
-                                </div>
+                                </motion.div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 12, marginTop: '2.5rem' }}>
-                                <button className="glow-btn" onClick={handleReviewSubmit} style={{ flex: 1, padding: '14px' }}>Finalize Audit</button>
-                                <button onClick={() => setReviewingProject(null)} style={{ padding: '14px 24px', borderRadius: 16, border: 'none', background: '#f3f4f6', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                            {/* Timer Card */}
+                            <div style={{
+                                padding: '1.25rem', borderRadius: 16,
+                                background: 'linear-gradient(135deg, rgba(236,72,153,0.04), rgba(249,115,22,0.03))',
+                                border: '1.5px solid rgba(236,72,153,0.15)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                    <div style={{
+                                        width: 32, height: 32, borderRadius: 8,
+                                        background: 'rgba(236,72,153,0.1)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Clock size={16} color="#ec4899" />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Workshop End Time</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Controls the countdown timer on dashboards</div>
+                                    </div>
+                                </div>
+                                <input
+                                    type="datetime-local"
+                                    className="glow-input"
+                                    value={settings.workshopEndTime ? new Date(settings.workshopEndTime).toISOString().slice(0, 16) : ''}
+                                    onChange={e => handleUpdateSettings('workshopEndTime', e.target.value)}
+                                    style={{ maxWidth: 320, fontSize: '0.9rem' }}
+                                />
                             </div>
-                        </motion.div>
+
+                            {/* Announcement Card */}
+                            <div style={{
+                                padding: '1.25rem', borderRadius: 16,
+                                background: 'linear-gradient(135deg, rgba(245,158,11,0.04), rgba(234,179,8,0.02))',
+                                border: '1.5px solid rgba(245,158,11,0.15)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                    <div style={{
+                                        width: 32, height: 32, borderRadius: 8,
+                                        background: 'rgba(245,158,11,0.1)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Sparkles size={16} color="#f59e0b" />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Announcement</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Shown on the landing page to all visitors</div>
+                                    </div>
+                                </div>
+                                <input
+                                    className="glow-input"
+                                    placeholder="Type your workshop announcement here..."
+                                    value={settings.announcement || ''}
+                                    onChange={e => handleUpdateSettings('announcement', e.target.value)}
+                                    style={{ fontSize: '0.9rem' }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </GlassCard>
+            </ScrollReveal>
+
+            {/* Participant Management */}
+            <ScrollReveal delay={0.2}>
+                <GlassCard hover={false}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h2 style={{ fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                            <Users size={20} color="#6366f1" /> Participants ({participants.length})
+                        </h2>
+                        <button className="glow-btn" onClick={() => setShowAddUser(!showAddUser)} style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Plus size={16} /> Add Participant
+                        </button>
                     </div>
-                )}
-            </AnimatePresence>
+
+                    {/* Add Participant Form */}
+                    <AnimatePresence>
+                        {showAddUser && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                style={{ overflow: 'hidden', marginBottom: '1rem' }}>
+                                <div style={{ padding: '1rem', borderRadius: 14, background: 'rgba(99,102,241,0.03)', border: '1px dashed rgba(99,102,241,0.2)' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                                        <input className="glow-input" placeholder="User ID" value={newUser.userId} onChange={e => setNewUser(f => ({ ...f, userId: e.target.value.toUpperCase() }))} />
+                                        <input className="glow-input" placeholder="Password (min 8 chars)" type="password" value={newUser.password} onChange={e => setNewUser(f => ({ ...f, password: e.target.value }))} />
+                                        <input className="glow-input" placeholder="Full Name" value={newUser.name} onChange={e => setNewUser(f => ({ ...f, name: e.target.value }))} />
+                                        <input className="glow-input" placeholder="Email (optional)" type="email" value={newUser.email} onChange={e => setNewUser(f => ({ ...f, email: e.target.value }))} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: '0.75rem' }}>
+                                        <button className="glow-btn" onClick={handleAddUser} style={{ padding: '8px 20px', fontSize: '0.85rem' }}>
+                                            <Save size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> Save
+                                        </button>
+                                        <button onClick={() => setShowAddUser(false)} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid var(--border-glass)', background: 'white', cursor: 'pointer' }}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Participants List */}
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        {participants.map(p => (
+                            <motion.div key={p.userId} layout
+                                style={{
+                                    padding: '1rem 1.25rem', borderRadius: 14,
+                                    background: 'rgba(255,255,255,0.5)', border: '1px solid var(--border-glass)',
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem',
+                                }}>
+                                {editUser?.userId === p.userId ? (
+                                    <div style={{ flex: 1, display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <input className="glow-input" value={editUser.name} onChange={e => setEditUser(f => ({ ...f, name: e.target.value }))} style={{ flex: 1, minWidth: 150, padding: '8px 12px' }} />
+                                        <button onClick={handleUpdateUser} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--accent-blue)', color: 'white', border: 'none', cursor: 'pointer' }}><Save size={14} /></button>
+                                        <button onClick={() => setEditUser(null)} style={{ padding: '6px 12px', borderRadius: 8, background: '#eee', border: 'none', cursor: 'pointer' }}><X size={14} /></button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <span style={{ fontWeight: 700, marginRight: 8 }}>{p.userId}</span>
+                                            <span style={{ color: 'var(--text-secondary)' }}>{p.name}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span className="badge">Participant</span>
+                                            <button onClick={() => setEditUser({ userId: p.userId, name: p.name })}
+                                                title="Edit name"
+                                                style={{ padding: '6px', borderRadius: 8, background: 'rgba(99,102,241,0.1)', border: 'none', cursor: 'pointer', color: 'var(--accent-blue)' }}>
+                                                <Edit3 size={14} />
+                                            </button>
+                                            <button onClick={() => handleResetPassword(p.userId)}
+                                                title="Reset password"
+                                                style={{ padding: '6px', borderRadius: 8, background: 'rgba(234,179,8,0.1)', border: 'none', cursor: 'pointer', color: '#ca8a04' }}>
+                                                <KeyRound size={14} />
+                                            </button>
+                                            <button onClick={() => handleDeleteUser(p.userId)}
+                                                title="Delete user"
+                                                style={{ padding: '6px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </motion.div>
+                        ))}
+                        {participants.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                No participants added yet. Click &quot;Add Participant&quot; to get started.
+                            </div>
+                        )}
+                    </div>
+                </GlassCard>
+            </ScrollReveal>
         </div>
     );
 }
-

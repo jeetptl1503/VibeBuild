@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard, ScrollReveal } from '@/components/UIComponents';
 import ReactConfetti from 'react-confetti';
-import { Clock, Github, Globe, Code2, Send, Save, Edit3, CheckCircle2, AlertCircle, Sparkles, ExternalLink, Tag, X, Users, Plus, UserPlus, Trash2, Rocket } from 'lucide-react';
+import { Clock, Github, Globe, Code2, Send, Save, Edit3, CheckCircle2, AlertCircle, Sparkles, ExternalLink, Tag, X, Users, Plus, UserPlus, Trash2 } from 'lucide-react';
 
 const DOMAINS = ['Healthcare AI', 'Agriculture AI', 'Smart Cities', 'Education Tech'];
 
@@ -175,155 +175,273 @@ export default function DashboardPage() {
 
             {/* Welcome */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '2.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
                     <div>
-                        <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>
-                            Welcome, <span style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user.name}</span>!
+                        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 4 }}>
+                            Welcome, <span style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user.name}</span>! 👋
                         </h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 500 }}>
-                            Nexus ID: <span style={{ color: 'var(--accent-blue)' }}>{user.userId}</span>
-                        </p>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {team && <span className="badge">🎯 {team.domain}</span>}
+                            {team && <span className="badge">👥 {team.teamName}</span>}
+                            <span className="badge" style={{ background: project?.status === 'submitted' ? 'rgba(34,197,94,0.1)' : 'rgba(234,179,8,0.1)', color: project?.status === 'submitted' ? '#16a34a' : '#ca8a04', borderColor: project?.status === 'submitted' ? 'rgba(34,197,94,0.2)' : 'rgba(234,179,8,0.2)' }}>
+                                {project?.status === 'submitted' ? '✅ Submitted' : project ? '📝 Draft' : '⏳ Not Started'}
+                            </span>
+                        </div>
                     </div>
+                    {/* Countdown */}
+                    <GlassCard hover={false} style={{ padding: '1rem 1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <Clock size={16} color="#6366f1" /> <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Time Remaining</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            {['h', 'm', 's'].map(unit => (
+                                <div key={unit} style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-blue)' }}>
+                                        {String(timeLeft[unit] || 0).padStart(2, '0')}
+                                    </div>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{unit === 'h' ? 'hrs' : unit === 'm' ? 'min' : 'sec'}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </GlassCard>
                 </div>
             </motion.div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
-                {/* Team Section */}
-                <ScrollReveal delay={0.05}>
-                    <GlassCard hover={false} style={{ height: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
-                                <Users size={24} color="#6366f1" /> My Team
-                            </h2>
-                            {!team && (
-                                <button className="glow-btn" onClick={() => setShowTeamForm(!showTeamForm)} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                                    {showTeamForm ? 'Cancel' : 'Create Team'}
-                                </button>
+            {/* Progress Bar */}
+            <ScrollReveal>
+                <GlassCard hover={false} style={{ marginBottom: '2rem', padding: '1.25rem 1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Progress</span>
+                        <span style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>{progress}%</span>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 4, background: 'rgba(99,102,241,0.1)', overflow: 'hidden' }}>
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            transition={{ duration: 1, ease: 'easeOut' }}
+                            style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7)' }}
+                        />
+                    </div>
+                </GlassCard>
+            </ScrollReveal>
+
+            {/* Team Section */}
+            <ScrollReveal delay={0.05}>
+                <GlassCard hover={false} style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                            <Users size={20} color="#6366f1" /> My Team
+                        </h2>
+                        {!team && (
+                            <button className="glow-btn" onClick={() => setShowTeamForm(!showTeamForm)} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {showTeamForm ? <X size={16} /> : <Plus size={16} />}
+                                {showTeamForm ? 'Cancel' : 'Create Team'}
+                            </button>
+                        )}
+                    </div>
+
+                    {team ? (
+                        /* Show existing team */
+                        <div>
+                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                <div style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Team Name</span>
+                                    <span style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>{team.teamName}</span>
+                                </div>
+                                <div style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Domain</span>
+                                    <span style={{ fontWeight: 700, color: '#7c3aed' }}>{team.domain}</span>
+                                </div>
+                                <div style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.15)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Leader</span>
+                                    <span style={{ fontWeight: 700, color: '#ec4899' }}>{team.leaderName}</span>
+                                </div>
+                            </div>
+                            {team.members?.length > 0 && (
+                                <div>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Team Members</span>
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        {team.members.map((m, i) => (
+                                            <span key={i} className="badge" style={{ padding: '6px 14px' }}>
+                                                {m.name} <span style={{ opacity: 0.6 }}>({m.userId})</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
                         </div>
-
-                        {team ? (
-                            <div>
-                                <div style={{ display: 'grid', gap: '1rem' }}>
-                                    <div style={{ padding: '1.25rem', borderRadius: 20, background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.1)' }}>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, display: 'block', marginBottom: 4 }}>Team Name</span>
-                                        <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{team.teamName}</span>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div style={{ padding: '1rem', borderRadius: 16, background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.1)' }}>
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: 2 }}>Domain</span>
-                                            <span style={{ fontWeight: 700, color: '#a855f7' }}>{team.domain}</span>
-                                        </div>
-                                        <div style={{ padding: '1rem', borderRadius: 16, background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.1)' }}>
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: 2 }}>Leader</span>
-                                            <span style={{ fontWeight: 700, color: '#0891b2' }}>{team.leaderName}</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, display: 'block' }}>Roster</span>
-                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                            {team.members.map((m, i) => (
-                                                <div key={i} style={{ padding: '6px 14px', borderRadius: 12, background: 'white', border: '1px solid var(--border-glass)', fontSize: '0.85rem', fontWeight: 500 }}>
-                                                    {m.name}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                    ) : showTeamForm ? (
+                        /* Team creation form */
+                        <div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Team Name *</label>
+                                    <input className="glow-input" placeholder="e.g. Team AlphaNova" value={teamForm.teamName} onChange={e => setTeamForm(f => ({ ...f, teamName: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Domain *</label>
+                                    <select className="glow-input" value={teamForm.domain} onChange={e => setTeamForm(f => ({ ...f, domain: e.target.value }))}>
+                                        {DOMAINS.map(d => <option key={d}>{d}</option>)}
+                                    </select>
                                 </div>
                             </div>
-                        ) : showTeamForm ? (
-                            /* Simplified Team creation form for Dashboard preview */
-                            <div style={{ textAlign: 'center', padding: '1rem' }}>
-                                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Create your team to begin collaboration.</p>
-                                <button className="glow-btn" onClick={() => router.push('/dashboard/submit')} style={{ width: '100%' }}>
-                                    Setup Team & Project
-                                </button>
-                            </div>
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                                <Users size={48} style={{ marginBottom: 16, opacity: 0.2 }} />
-                                <p style={{ margin: 0, fontWeight: 500 }}>No team found for Nexus user {user.userId}</p>
-                                <button className="glow-btn" onClick={() => setShowTeamForm(true)} style={{ marginTop: 20 }}>
-                                    Initialize Team
-                                </button>
-                            </div>
-                        )}
-                    </GlassCard>
-                </ScrollReveal>
 
-                {/* Projects Submitted Section */}
-                <ScrollReveal delay={0.1}>
-                    <GlassCard hover={false} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
-                                <Rocket size={24} color="#a855f7" /> Projects
-                            </h2>
-                            <button className="glow-btn" onClick={() => router.push('/dashboard/submit')} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                                {project ? 'Update Project' : 'New Project'}
-                            </button>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                        <UserPlus size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Team Members
+                                    </label>
+                                    <button onClick={addMemberRow} style={{ padding: '4px 12px', borderRadius: 8, border: '1px solid var(--border-glass)', background: 'rgba(99,102,241,0.05)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500, color: 'var(--accent-blue)' }}>
+                                        + Add Member
+                                    </button>
+                                </div>
+                                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                                    {teamForm.members.map((m, i) => (
+                                        <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <input className="glow-input" placeholder="Member Name" value={m.name} onChange={e => updateMember(i, 'name', e.target.value)} style={{ flex: 1 }} />
+                                            <input className="glow-input" placeholder="Member User ID" value={m.userId} onChange={e => updateMember(i, 'userId', e.target.value.toUpperCase())} style={{ flex: 1 }} />
+                                            {teamForm.members.length > 1 && (
+                                                <button onClick={() => removeMemberRow(i)} style={{ padding: 6, borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <motion.button whileTap={{ scale: 0.98 }} className="glow-btn" onClick={handleCreateTeam} disabled={teamCreating}
+                                style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Users size={16} /> {teamCreating ? 'Creating...' : 'Create Team'}
+                            </motion.button>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
+                            <Users size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+                            <p style={{ margin: 0 }}>You haven&apos;t created a team yet. Create one to get started!</p>
+                        </div>
+                    )}
+                </GlassCard>
+            </ScrollReveal>
+
+            {/* Message Display */}
+            {message.text && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        padding: '12px 16px', borderRadius: 12, marginBottom: '1rem',
+                        background: message.type === 'error' ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+                        border: `1px solid ${message.type === 'error' ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`,
+                        color: message.type === 'error' ? '#dc2626' : '#16a34a',
+                        fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                    {message.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />} {message.text}
+                </motion.div>
+            )}
+
+            {/* Submission Form */}
+            <ScrollReveal delay={0.1}>
+                <GlassCard hover={false} style={{ marginBottom: '2rem' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Code2 size={20} color="#6366f1" /> Project Submission
+                    </h2>
+
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                Problem Statement Title *
+                            </label>
+                            <input className="glow-input" placeholder="e.g. AI-Powered Crop Disease Detection" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
                         </div>
 
-                        {project ? (
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                <div style={{
-                                    padding: '1.5rem', borderRadius: 24,
-                                    background: project.status === 'submitted' ? 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(99,102,241,0.03))' : 'rgba(248,248,252,0.6)',
-                                    border: `1.5px solid ${project.status === 'submitted' ? 'rgba(34,197,94,0.2)' : 'rgba(200,200,220,0.3)'}`,
-                                    marginBottom: '1.5rem'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0 }}>{project.title}</h3>
-                                        <span style={{
-                                            padding: '4px 12px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase',
-                                            background: project.status === 'submitted' ? '#22c55e' : '#94a3b8', color: 'white'
-                                        }}>
-                                            {project.status}
-                                        </span>
-                                    </div>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                        {project.description}
-                                    </p>
-                                    <div style={{ display: 'flex', gap: 16 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
-                                            <Github size={16} /> {project.githubUrl ? 'Linked' : 'Missing'}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
-                                            <Globe size={16} /> {project.liveUrl ? 'Live' : 'No Demo'}
-                                        </div>
-                                    </div>
-                                </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                Problem Description *
+                            </label>
+                            <textarea className="glow-textarea" placeholder="Describe your solution..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                        </div>
 
-                                {/* Rating & Score Display */}
-                                {project.status === 'submitted' && (
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: 'auto' }}>
-                                        <div style={{ padding: '1.25rem', borderRadius: 20, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white', textAlign: 'center' }}>
-                                            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.8, marginBottom: 4 }}>Nexus Rating</div>
-                                            <div style={{ fontSize: '2rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                                                {project.rating || '0.0'}<span style={{ fontSize: '1rem', opacity: 0.6 }}>/5</span>
-                                            </div>
-                                        </div>
-                                        <div style={{ padding: '1.25rem', borderRadius: 20, background: 'linear-gradient(135deg, #a855f7, #9333ea)', color: 'white', textAlign: 'center' }}>
-                                            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.8, marginBottom: 4 }}>Audit Score</div>
-                                            <div style={{ fontSize: '2rem', fontWeight: 900 }}>
-                                                {project.score || '0'}<span style={{ fontSize: '1rem', opacity: 0.6 }}>%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                    <Github size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> GitHub URL *
+                                </label>
+                                <input className="glow-input" placeholder="https://github.com/user/repo" value={form.githubUrl} onChange={e => setForm(f => ({ ...f, githubUrl: e.target.value }))} />
                             </div>
-                        ) : (
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
-                                <Rocket size={48} style={{ marginBottom: 16, opacity: 0.2 }} />
-                                <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontWeight: 500 }}>No active missions found. Initialize your project submission.</p>
-                                <button className="glow-btn" onClick={() => router.push('/dashboard/submit')} style={{ width: '100%', padding: '14px' }}>
-                                    Deploy Project
-                                </button>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                    <Globe size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Live Website URL
+                                </label>
+                                <input className="glow-input" placeholder="https://yourproject.vercel.app" value={form.liveUrl} onChange={e => setForm(f => ({ ...f, liveUrl: e.target.value }))} />
                             </div>
-                        )}
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                <Tag size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Tech Stack
+                            </label>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                <input className="glow-input" placeholder="e.g. React" value={techInput} onChange={e => setTechInput(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTech())} style={{ flex: 1 }} />
+                                <button onClick={addTech} className="glow-btn" style={{ padding: '10px 20px' }}>Add</button>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {form.techStack.map((tech, i) => (
+                                    <span key={i} className="badge" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        {tech} <X size={12} style={{ cursor: 'pointer' }} onClick={() => removeTech(tech)} />
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            className="glow-btn"
+                            onClick={() => handleSubmit('submitted')}
+                            disabled={submitting}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                        >
+                            <Send size={16} /> {submitting ? 'Submitting...' : 'Submit Project'}
+                        </motion.button>
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleSubmit('draft')}
+                            disabled={submitting}
+                            style={{
+                                padding: '12px 24px', borderRadius: 14, border: '2px solid rgba(99,102,241,0.3)',
+                                background: 'rgba(99,102,241,0.05)', color: 'var(--accent-blue)', fontWeight: 600,
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem',
+                            }}
+                        >
+                            <Save size={16} /> Save Draft
+                        </motion.button>
+                    </div>
+                </GlassCard>
+            </ScrollReveal>
+
+            {/* Submitted Project Preview */}
+            {project?.status === 'submitted' && (
+                <ScrollReveal delay={0.2}>
+                    <GlassCard style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.05), rgba(99,102,241,0.05))' }}>
+                        <h3 style={{ fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <CheckCircle2 size={20} color="#16a34a" /> Submitted Project
+                        </h3>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{project.title}</h4>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '8px 0' }}>{project.description}</p>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+                            <a href={project.githubUrl} target="_blank" rel="noopener" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500, fontSize: '0.85rem' }}>
+                                <Github size={16} /> GitHub <ExternalLink size={12} />
+                            </a>
+                            {project.liveUrl && (
+                                <a href={project.liveUrl} target="_blank" rel="noopener" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-purple)', textDecoration: 'none', fontWeight: 500, fontSize: '0.85rem' }}>
+                                    <Globe size={16} /> Live Demo <ExternalLink size={12} />
+                                </a>
+                            )}
+                        </div>
                     </GlassCard>
                 </ScrollReveal>
-            </div>
+            )}
         </div>
     );
 }
-
