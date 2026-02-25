@@ -1,11 +1,23 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { GlassCard, ScrollReveal, SkeletonCard } from '@/components/UIComponents';
-import { Globe, Github, ExternalLink, Search, Layers, Plus, X, Send, Trash2, Edit3, ChevronDown, BookOpen, Code2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+    Globe, Github, ExternalLink, Search, Rocket,
+    Award, BarChart3, Wallet, GraduationCap, Leaf,
+    HeartPulse, Orbit, Cpu, HardDrive, Trash2, Filter
+} from 'lucide-react';
 
-const DOMAINS = ['All', 'Healthcare AI', 'Agriculture AI', 'Smart Cities', 'Education Tech'];
+const DOMAINS = [
+    { name: 'All', icon: <Filter size={16} />, color: '#64748b' },
+    { name: 'Fintech', icon: <Wallet size={16} />, color: '#10b981' },
+    { name: 'Education', icon: <GraduationCap size={16} />, color: '#6366f1' },
+    { name: 'Agriculture and Food Technology', icon: <Leaf size={16} />, color: '#16a34a' },
+    { name: 'Health', icon: <HeartPulse size={16} />, color: '#ef4444' },
+    { name: 'Space Technology', icon: <Orbit size={16} />, color: '#8b5cf6' },
+    { name: 'AI/ML', icon: <Cpu size={16} />, color: '#06b6d4' },
+];
 
 export default function ShowcasePage() {
     const { user, authFetch } = useAuth();
@@ -13,12 +25,7 @@ export default function ShowcasePage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [domainFilter, setDomainFilter] = useState('All');
-    const [showSubmit, setShowSubmit] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
-    const [toast, setToast] = useState('');
-    const [form, setForm] = useState({
-        title: '', domain: 'Healthcare AI', problemStatement: '', description: '', githubUrl: '', liveUrl: '',
-    });
+    const [hoveredProject, setHoveredProject] = useState(null);
 
     const isAdmin = user?.role === 'admin';
 
@@ -29,12 +36,7 @@ export default function ShowcasePage() {
     async function fetchData() {
         setLoading(true);
         try {
-            let res;
-            if (isAdmin) {
-                res = await authFetch('/api/projects');
-            } else {
-                res = await fetch('/api/projects/public');
-            }
+            const res = await fetch('/api/projects/public');
             if (res.ok) {
                 const data = await res.json();
                 setProjects(data.projects || []);
@@ -44,218 +46,186 @@ export default function ShowcasePage() {
         }
     }
 
-    async function handleSubmit(e) {
-        e.preventDefault();
-        if (!form.title || !form.description || !form.githubUrl) return;
-        setSubmitting(true);
-        try {
-            const res = await authFetch('/api/projects', {
-                method: 'POST',
-                body: JSON.stringify({ ...form, status: 'submitted' }),
-            });
-            if (res.ok) {
-                setToast('Project submitted successfully!');
-                setTimeout(() => setToast(''), 3000);
-                setShowSubmit(false);
-                setForm({ title: '', domain: 'Healthcare AI', problemStatement: '', description: '', githubUrl: '', liveUrl: '' });
-                fetchData();
-            }
-        } finally {
-            setSubmitting(false);
-        }
-    }
-
     async function handleDelete(id) {
-        if (!confirm('Delete this project?')) return;
-        const res = await authFetch(`/api/projects/${id}`, { method: 'DELETE' });
-        if (res.ok) setProjects(prev => prev.filter(p => p._id !== id));
+        if (!confirm('Permanently delete this project from the Nexus grid?')) return;
+        const res = await authFetch(`/api/projects?id=${id}`, { method: 'DELETE' });
+        if (res.ok) setProjects(prev => prev.filter(p => (p._id !== id && p.userId !== id)));
     }
 
     const filtered = projects.filter(p => {
-        const matchSearch = !search || p.title?.toLowerCase().includes(search.toLowerCase()) || p.description?.toLowerCase().includes(search.toLowerCase()) || p.teamName?.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = !search ||
+            p.title?.toLowerCase().includes(search.toLowerCase()) ||
+            p.description?.toLowerCase().includes(search.toLowerCase()) ||
+            p.userName?.toLowerCase().includes(search.toLowerCase());
         const matchDomain = domainFilter === 'All' || p.domain === domainFilter;
         return matchSearch && matchDomain;
     });
 
+    const ProjectCard = ({ project, index }) => {
+        const domainIcon = DOMAINS.find(d => d.name === project.domain)?.icon || <Rocket size={16} />;
+        const domainColor = DOMAINS.find(d => d.name === project.domain)?.color || '#6366f1';
+
+        return (
+            <motion.div
+                layout
+                whileHover={{ scale: 1.02, rotateY: 2, rotateX: 2 }}
+                onMouseEnter={() => setHoveredProject(project._id || project.userId)}
+                onMouseLeave={() => setHoveredProject(null)}
+                style={{
+                    perspective: '1000px',
+                    height: '100%'
+                }}
+            >
+                <GlassCard style={{
+                    display: 'flex', flexDirection: 'column', height: '100%',
+                    padding: '2rem', borderRadius: 28, position: 'relative',
+                    border: hoveredProject === (project._id || project.userId) ? `1.5px solid ${domainColor}40` : '1.5px solid var(--border-glass)',
+                    transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                        <div style={{
+                            width: 44, height: 44, borderRadius: 14,
+                            background: `${domainColor}10`, display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', color: domainColor
+                        }}>
+                            {domainIcon}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            {project.rating > 0 && (
+                                <div style={{
+                                    padding: '6px 14px', borderRadius: 20, background: 'rgba(234,179,8,0.1)',
+                                    color: '#ca8a04', fontSize: '0.75rem', fontWeight: 800,
+                                    display: 'flex', alignItems: 'center', gap: 5
+                                }}>
+                                    <Award size={14} /> {project.rating}
+                                </div>
+                            )}
+                            {isAdmin && (
+                                <button onClick={() => handleDelete(project._id || project.userId)}
+                                    style={{ padding: '8px', borderRadius: 12, background: 'rgba(239,68,68,0.05)', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                        <h3 style={{ fontWeight: 900, fontSize: '1.35rem', marginBottom: 6, lineHeight: 1.2 }}>{project.title}</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {project.userName ? `Operator: ${project.userName}` : `Nexus Unit: ${project.userId}`}
+                        </p>
+
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                            {project.description?.length > 180 ? project.description.slice(0, 180) + '...' : project.description}
+                        </p>
+
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                            {(project.techStack || []).slice(0, 4).map((t, j) => (
+                                <span key={j} style={{
+                                    padding: '5px 12px', borderRadius: 10, fontSize: '0.75rem', fontWeight: 700,
+                                    background: 'rgba(0,0,0,0.03)', color: 'var(--text-secondary)',
+                                    border: '1px solid rgba(0,0,0,0.05)'
+                                }}>{t}</span>
+                            ))}
+                            {project.techStack?.length > 4 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>+{project.techStack.length - 4} more</span>}
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 'auto', pt: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
+                        {project.githubUrl && (
+                            <a href={project.githubUrl} target="_blank" rel="noopener noreferrer"
+                                style={{
+                                    flex: 1, padding: '10px', borderRadius: 14, textDecoration: 'none', fontSize: '0.85rem',
+                                    background: 'rgba(0,0,0,0.04)', color: 'var(--text-primary)', fontWeight: 800,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s',
+                                }}>
+                                <Github size={16} /> Repository
+                            </a>
+                        )}
+                        {project.liveUrl && (
+                            <a href={project.liveUrl} target="_blank" rel="noopener noreferrer"
+                                style={{
+                                    flex: 1, padding: '10px', borderRadius: 14, textDecoration: 'none', fontSize: '0.85rem',
+                                    background: domainColor, color: 'white', fontWeight: 800,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    boxShadow: `0 8px 16px ${domainColor}30`
+                                }}>
+                                <Globe size={16} /> Live Demo
+                            </a>
+                        )}
+                    </div>
+                </GlassCard>
+            </motion.div>
+        );
+    };
+
     return (
-        <div className="page-container">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <h1 className="section-title">🌍 Project Showcase</h1>
-                <p className="section-subtitle">Explore AI innovations built by our participants</p>
+        <div className="page-container" style={{ minHeight: '100vh', background: 'radial-gradient(circle at 10% 20%, rgba(99,102,241,0.03) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(168,85,247,0.03) 0%, transparent 40%)' }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 20px', borderRadius: 30, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontSize: '0.85rem', fontWeight: 800, marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    <Orbit size={18} className="spin-slow" /> Nexus Neural Grid
+                </div>
+                <h1 style={{ fontSize: '3.5rem', fontWeight: 900, marginBottom: '1rem', background: 'linear-gradient(135deg, #1e293b, #475569)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>
+                    Innovation Showcase
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', maxWidth: 650, margin: '0 auto' }}>
+                    Witness the convergence of creativity and intelligence on the VibeBuild grid. Explore next-gen solutions across multiple domains.
+                </p>
             </motion.div>
 
-            {/* Toast */}
-            <AnimatePresence>
-                {toast && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        style={{
-                            position: 'fixed', top: 90, right: 24, zIndex: 1000, padding: '14px 20px', borderRadius: 14,
-                            background: 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
-                            boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
-                        }}>
-                        <CheckCircle2 size={18} /> {toast}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Controls */}
+            {/* Enhanced Controls */}
             <ScrollReveal>
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', flex: '1 1 250px' }}>
-                        <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input className="glow-input" placeholder="Search projects..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 42 }} />
+                <div style={{ marginBottom: '3.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', maxWidth: 500 }}>
+                            <Search size={20} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                            <input className="glow-input" placeholder="Search mission protocols, operators, or techs..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 48, height: 56, borderRadius: 20, fontSize: '1rem' }} />
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
                         {DOMAINS.map(d => (
-                            <button key={d} onClick={() => setDomainFilter(d)}
+                            <motion.button
+                                key={d.name}
+                                onClick={() => setDomainFilter(d.name)}
+                                whileHover={{ y: -2 }}
+                                whileTap={{ scale: 0.95 }}
                                 style={{
-                                    padding: '8px 14px', borderRadius: 20, cursor: 'pointer', fontWeight: 500, fontSize: '0.82rem',
-                                    border: '1px solid var(--border-glass)',
-                                    background: domainFilter === d ? 'var(--accent-blue)' : 'rgba(255,255,255,0.6)',
-                                    color: domainFilter === d ? 'white' : 'var(--text-secondary)',
-                                    transition: 'all 0.2s',
+                                    padding: '10px 20px', borderRadius: 16, cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+                                    border: '1.5px solid var(--border-glass)',
+                                    background: domainFilter === d.name ? d.color : 'white',
+                                    color: domainFilter === d.name ? 'white' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    boxShadow: domainFilter === d.name ? `0 10px 20px ${d.color}30` : 'none',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 }}>
-                                {d}
-                            </button>
+                                {d.icon} {d.name}
+                            </motion.button>
                         ))}
                     </div>
-                    {user && user.role !== 'admin' && (
-                        <button className="glow-btn" onClick={() => setShowSubmit(!showSubmit)} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {showSubmit ? <X size={18} /> : <Plus size={18} />}
-                            {showSubmit ? 'Cancel' : 'Submit Project'}
-                        </button>
-                    )}
                 </div>
             </ScrollReveal>
 
-            {/* Submit Project Form (Students only) */}
-            <AnimatePresence>
-                {showSubmit && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                        <GlassCard hover={false} style={{ marginBottom: '1.5rem' }}>
-                            <h3 style={{ fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Send size={18} color="#6366f1" /> Submit Your Project
-                            </h3>
-                            <form onSubmit={handleSubmit}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Project Title *</label>
-                                        <input className="glow-input" placeholder="e.g. AI Health Monitor" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Domain</label>
-                                        <select className="glow-input" value={form.domain} onChange={e => setForm(f => ({ ...f, domain: e.target.value }))}>
-                                            {DOMAINS.filter(d => d !== 'All').map(d => <option key={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-                                    <div style={{ gridColumn: '1 / -1' }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Problem Statement</label>
-                                        <input className="glow-input" placeholder="What problem does this solve?" value={form.problemStatement} onChange={e => setForm(f => ({ ...f, problemStatement: e.target.value }))} />
-                                    </div>
-                                    <div style={{ gridColumn: '1 / -1' }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Description *</label>
-                                        <textarea className="glow-input" placeholder="Tell us about your project..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} required style={{ resize: 'vertical' }} />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>GitHub Repo Link *</label>
-                                        <input className="glow-input" placeholder="https://github.com/user/repo" value={form.githubUrl} onChange={e => setForm(f => ({ ...f, githubUrl: e.target.value }))} type="url" required />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Live Demo Link</label>
-                                        <input className="glow-input" placeholder="https://your-project.vercel.app" value={form.liveUrl} onChange={e => setForm(f => ({ ...f, liveUrl: e.target.value }))} type="url" />
-                                    </div>
-                                </div>
-                                <motion.button type="submit" className="glow-btn" disabled={submitting} whileTap={{ scale: 0.98 }}
-                                    style={{ marginTop: '1rem', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <Send size={16} /> {submitting ? 'Submitting...' : 'Submit Project'}
-                                </motion.button>
-                            </form>
-                        </GlassCard>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Projects Grid */}
+            {/* Nexus Grid */}
             {loading ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
                     {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
                 </div>
             ) : filtered.length === 0 ? (
-                <GlassCard style={{ textAlign: 'center', padding: '3rem' }}>
-                    <Globe size={48} color="var(--text-muted)" style={{ marginBottom: '1rem' }} />
-                    <h3 style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>No projects found</h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        {search || domainFilter !== 'All' ? 'Try adjusting your search or filter' : 'Projects will appear here once submitted'}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '5rem 2rem' }}>
+                    <div style={{ width: 80, height: 80, borderRadius: 40, background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                        <HardDrive size={32} color="var(--text-muted)" />
+                    </div>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: 8 }}>Neural Void Detected</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>
+                        {search || domainFilter !== 'All' ? 'No projects match your current filtration mask.' : 'Initialization complete. Waiting for first mission deployment.'}
                     </p>
-                </GlassCard>
+                </motion.div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
                     {filtered.map((project, i) => (
-                        <ScrollReveal key={project._id || i} delay={i * 0.05}>
-                            <GlassCard style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                    <div>
-                                        <h3 style={{ fontWeight: 700, fontSize: '1.05rem', margin: 0 }}>{project.title}</h3>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '2px 0' }}>{project.teamName || project.userName || project.userId}</p>
-                                    </div>
-                                    <span className="badge">{project.domain}</span>
-                                </div>
-
-                                {project.problemStatement && (
-                                    <div style={{
-                                        padding: '8px 12px', borderRadius: 10, marginBottom: '0.75rem',
-                                        background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.1)',
-                                        fontSize: '0.82rem', color: 'var(--accent-blue)',
-                                    }}>
-                                        <BookOpen size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-                                        {project.problemStatement}
-                                    </div>
-                                )}
-
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', flex: 1, lineHeight: 1.6, margin: '0 0 0.75rem' }}>
-                                    {project.description?.length > 160 ? project.description.slice(0, 160) + '...' : project.description}
-                                </p>
-
-                                {project.techStack?.length > 0 && (
-                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                                        {project.techStack.map((t, j) => (
-                                            <span key={j} style={{
-                                                padding: '3px 10px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 500,
-                                                background: 'rgba(139,92,246,0.07)', color: '#7c3aed',
-                                            }}>{t}</span>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                                    {project.githubUrl && (
-                                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer"
-                                            style={{
-                                                padding: '8px 14px', borderRadius: 10, textDecoration: 'none', fontSize: '0.82rem',
-                                                background: 'rgba(0,0,0,0.04)', color: 'var(--text-primary)', fontWeight: 500,
-                                                display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s',
-                                            }}>
-                                            <Github size={14} /> GitHub
-                                        </a>
-                                    )}
-                                    {project.liveUrl && (
-                                        <a href={project.liveUrl} target="_blank" rel="noopener noreferrer"
-                                            style={{
-                                                padding: '8px 14px', borderRadius: 10, textDecoration: 'none', fontSize: '0.82rem',
-                                                background: 'var(--accent-blue)', color: 'white', fontWeight: 500,
-                                                display: 'flex', alignItems: 'center', gap: 6,
-                                            }}>
-                                            <ExternalLink size={14} /> Live Demo
-                                        </a>
-                                    )}
-                                    {isAdmin && (
-                                        <button onClick={() => handleDelete(project._id)}
-                                            style={{ marginLeft: 'auto', padding: '8px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
-                                            <Trash2 size={14} />
-                                        </button>
-                                    )}
-                                </div>
-                            </GlassCard>
+                        <ScrollReveal key={project._id || project.userId || i} delay={i * 0.05}>
+                            <ProjectCard project={project} index={i} />
                         </ScrollReveal>
                     ))}
                 </div>
@@ -263,3 +233,7 @@ export default function ShowcasePage() {
         </div>
     );
 }
+
+// Add these to globals.css for the extra animations
+// .spin-slow { animation: spin 8s linear infinite; }
+// @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

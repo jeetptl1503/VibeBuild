@@ -16,13 +16,10 @@ A modern, animated workshop platform built for hackathon-style AI workshops. Par
 |---------|-------------|
 | 🔐 **Individual Auth** | JWT login via User ID or Email, rate-limited (5 attempts/15min), HTTP-only cookies |
 | 👥 **Self-Service Teams** | Participants create teams from the dashboard (team name, members, domain) |
-| 📊 **Dashboard** | Countdown timer, progress tracker, team creation, project submission with confetti |
-| 🌍 **Project Showcase** | Public grid with domain filters, search, hover animations & student submission form |
-| 🤖 **AI Chatbot** | Floating assistant with OpenAI integration + built-in fallback guides for GitHub & Vercel deployment |
-| 🖼️ **Gallery** | Masonry layout with lightbox, video model & admin upload/approval system |
-| 📋 **Attendance** | Admin CRUD with first/second half toggles & CSV export |
-| 📈 **Reports** | Upload & manage event materials (PDFs, images, presentations) with category filtering |
-| 🛠️ **Admin Panel** | Manage participants (with email), toggle submissions, animated settings cards |
+| 📊 **Dashboard** | Projects Submitted summary with **Nexus Rating** & **Audit Score** (Admin reviewed) |
+| 🚀 **Submission** | Dedicated page with **unique domains** (Fintech, Health, Space Tech, etc.) + Custom domain support |
+| 🌍 **Project Showcase** | **Nexus Grid** with 3D hover effects, domain filtering, and expert ratings |
+| 🛠️ **Admin Panel** | Manage participants, **Audit missions** (rate 1-5, score 0-100, technical feedback) |
 | 🎓 **Certificates** | Admin-issued certificates (name, ID, type) with PDF generation & QR code |
 | ❓ **FAQ** | Smooth accordion section powered by Radix UI |
 
@@ -163,9 +160,23 @@ All 40 participants from `UserIDP.xlsx` are auto-seeded into both MongoDB and th
 </details>
 
 - Log in with **Student ID** + assigned password
-- Create a team from the **Dashboard**: enter team name, domain, and add teammates
-- Submit projects with GitHub links, live demos, and tech stack details
-- Change password (requires old password, min 8 chars)
+- Build your team from the **Dashboard**
+- Launch your **Mission** from the dedicated **Project Submission** page:
+  - Choose a unique domain (Fintech, Health, etc.)
+  - Define technical specifications & problem statement
+  - Deploy to the Nexus grid with GitHub & Live Demo
+- Monitor your **Expert Audit Review** on the dashboard once finalized by an admin
+
+### 🛸 Mission Domains
+| Domain | Focus Area |
+|--------|------------|
+| **Fintech** | Financial intelligence & digital economy |
+| **Education** | Next-gen learning & skill acquisition |
+| **Agriculture** | Food technology & sustainable farming |
+| **Health** | Bio-tech & AI-driven wellness |
+| **Space Tech** | Orbital logistics & aerospace innovation |
+| **AI/ML** | Core neural algorithms & generic intelligence |
+| **Custom** | Specialized missions outside standard protocols |
 
 ### Security
 - 🔒 JWT stored in HTTP-only secure cookies
