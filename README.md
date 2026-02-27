@@ -102,7 +102,7 @@ npm start
 ### Admins (3 predefined accounts)
 | Admin ID | Role |
 |----------|------|
-| `DMP001` | Faculty Coordinator |
+| `DMP001` | Prof. Dhara M Patel (Coordinator) |
 | `25EC080` | Student Coordinator |
 | `25EC112` | Student Coordinator |
 

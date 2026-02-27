@@ -47,7 +47,7 @@ export default function Footer() {
                             background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(99,102,241,0.1)',
                             backdropFilter: 'blur(10px)',
                         }}>
-                            <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 4 }}>Dr. Dhara M Patel</p>
+                            <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 4 }}>Prof. Dhara M Patel</p>
                             <a href="mailto:dharampatel.ec@charusat.ac.in" style={{
                                 color: 'var(--text-muted)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6,
                             }}>
